@@ -195,15 +195,27 @@ function renderDemoContent() {
 // Data Fetching
 async function fetchFromTMDB(endpoint) {
     const key = getApiKey();
-    if (!key) return null;
+    if (!key) {
+        console.warn("No API key found.");
+        return null;
+    }
 
     try {
         const separator = endpoint.includes('?') ? '&' : '?';
-        const response = await fetch(`${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`);
-        if (!response.ok) throw new Error('Network response was not ok');
+        const url = `${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`;
+        console.log("Fetching from TMDB:", url.replace(key, 'HIDDEN'));
+        
+        const response = await fetch(url);
+        console.log("TMDB Response Status:", response.status);
+        
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            console.error("TMDB Error Details:", errData);
+            throw new Error(`TMDB Error: ${response.status}`);
+        }
         return await response.json();
     } catch (error) {
-        console.error("Fetch error: ", error);
+        console.error("Fetch error details:", error);
         return null;
     }
 }
@@ -265,7 +277,8 @@ async function performSearch() {
         // Scroll down to results
         document.getElementById('movies-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (e) {
-        console.error(e);
+        console.error("Search Logic Error:", e);
+        alert("Search failed. This is usually caused by an invalid API key or network block.");
     } finally {
         searchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
         searchBtn.disabled = false;
