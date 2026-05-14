@@ -1,6 +1,12 @@
-// Configuration
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
+
+// PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
+const DEFAULT_API_KEY = 'b80a71388447e647e1ff09bd1fd41a4f';
+
+function getApiKey() {
+    return localStorage.getItem('tmdb_api_key') || DEFAULT_API_KEY;
+}
 
 // DOM Elements
 const navbar = document.querySelector('.navbar');
@@ -13,8 +19,6 @@ const tvControls = document.getElementById('tv-controls');
 const seasonSelect = document.getElementById('season-select');
 const episodeSelect = document.getElementById('episode-select');
 const updateEpisodeBtn = document.getElementById('update-episode-btn');
-const adblockToggle = document.getElementById('adblock-toggle');
-const adblockStatus = document.getElementById('adblock-status');
 const playerTitle = document.getElementById('player-title');
 const apiNotice = document.getElementById('api-notice');
 const addKeyBtn = document.getElementById('add-key-btn');
@@ -56,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initScrollEffect();
     checkApiKey();
     setupEventListeners();
-    
+
     // Generate episode options
     populateEpisodeSelect();
 });
@@ -72,11 +76,14 @@ function initScrollEffect() {
 }
 
 // API Key Management
-function getApiKey() {
-    return localStorage.getItem('tmdb_api_key');
-}
+async function setApiKey(key) {
+    // Basic validation check
+    const test = await fetch(`${TMDB_BASE_URL}/authentication?api_key=${key}`);
+    if (!test.ok) {
+        alert("Invalid API Key! Please use the shorter 'API Key' from TMDB, not the long 'Read Access Token'.");
+        return;
+    }
 
-function setApiKey(key) {
     localStorage.setItem('tmdb_api_key', key);
     apiKeyModal.classList.remove('active');
     apiNotice.classList.remove('show');
@@ -108,24 +115,23 @@ function setupEventListeners() {
         apiKeyModal.classList.add('active');
         apiKeyInput.value = getApiKey() || '';
     });
-    
+
     dismissNoticeBtn.addEventListener('click', () => {
         apiNotice.classList.remove('show');
     });
-    
+
     closeKeyModalBtn.addEventListener('click', () => {
         apiKeyModal.classList.remove('active');
     });
-    
-    saveKeyBtn.addEventListener('click', () => {
-        const key = apiKeyInput.value.trim();
-        if (key) setApiKey(key);
-    });
 
-    // Ad-Block Toggle
-    adblockToggle.addEventListener('change', () => {
-        if (playerModal.classList.contains('active')) {
-            loadIframe(); // Refresh player if open
+    saveKeyBtn.addEventListener('click', async () => {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            saveKeyBtn.disabled = true;
+            saveKeyBtn.textContent = "Validating...";
+            await setApiKey(key);
+            saveKeyBtn.disabled = false;
+            saveKeyBtn.textContent = "Save Key";
         }
     });
 
@@ -158,8 +164,8 @@ function renderMediaCard(item, type) {
     const title = type === 'movie' ? item.title : item.name;
     const date = type === 'movie' ? (item.release_date || '').split('-')[0] : (item.first_air_date || '').split('-')[0];
     const rating = item.vote_average ? item.vote_average.toFixed(1) : 'NR';
-    const poster = item.poster_path 
-        ? `https://image.tmdb.org/t/p/w500${item.poster_path}` 
+    const poster = item.poster_path
+        ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
         : 'https://via.placeholder.com/500x750?text=No+Poster';
 
     return `
@@ -192,7 +198,8 @@ async function fetchFromTMDB(endpoint) {
     if (!key) return null;
 
     try {
-        const response = await fetch(`${TMDB_BASE_URL}${endpoint}?api_key=${key}&language=en-US`);
+        const separator = endpoint.includes('?') ? '&' : '?';
+        const response = await fetch(`${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`);
         if (!response.ok) throw new Error('Network response was not ok');
         return await response.json();
     } catch (error) {
@@ -205,7 +212,7 @@ async function loadContent() {
     const moviesData = await fetchFromTMDB('/trending/movie/week');
     if (moviesData && moviesData.results) {
         moviesGrid.innerHTML = moviesData.results.slice(0, 10).map(m => renderMediaCard(m, 'movie')).join('');
-        
+
         // Update Hero
         const heroMovie = moviesData.results[0];
         document.getElementById('hero-title').textContent = heroMovie.title;
@@ -233,31 +240,39 @@ async function performSearch() {
         return;
     }
 
+    searchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
     // Search Movies
     const moviesSearch = await fetchFromTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
-    if (moviesSearch && moviesSearch.results) {
+    if (moviesSearch && moviesSearch.results && moviesSearch.results.length > 0) {
         document.querySelector('.content-section:nth-of-type(1) h2').textContent = `Search Results: Movies`;
         moviesGrid.innerHTML = moviesSearch.results.filter(m => m.poster_path).slice(0, 10).map(m => renderMediaCard(m, 'movie')).join('');
+    } else {
+        moviesGrid.innerHTML = '<p class="no-results">No movies found.</p>';
     }
 
     // Search Shows
     const showsSearch = await fetchFromTMDB(`/search/tv?query=${encodeURIComponent(query)}`);
-    if (showsSearch && showsSearch.results) {
+    if (showsSearch && showsSearch.results && showsSearch.results.length > 0) {
         document.querySelector('.content-section:nth-of-type(2) h2').textContent = `Search Results: TV Shows`;
         showsGrid.innerHTML = showsSearch.results.filter(s => s.poster_path).slice(0, 10).map(s => renderMediaCard(s, 'tv')).join('');
+    } else {
+        showsGrid.innerHTML = '<p class="no-results">No shows found.</p>';
     }
-    
+
+    searchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
+
     // Scroll down to results
     document.getElementById('movies-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // Player Logic
-window.openPlayer = function(type, id, title) {
+window.openPlayer = function (type, id, title) {
     currentMedia.type = type;
     currentMedia.id = id;
     currentMedia.season = 1;
     currentMedia.episode = 1;
-    
+
     // Update title
     playerTitle.textContent = title || (type === 'movie' ? 'Movie' : 'TV Show');
 
@@ -278,21 +293,11 @@ window.openPlayer = function(type, id, title) {
 
 function loadIframe() {
     let embedUrl = '';
-    const isAdBlockOn = adblockToggle.checked;
-    
+
     if (currentMedia.type === 'movie') {
         embedUrl = `${VIDKING_BASE_URL}/movie/${currentMedia.id}?autoplay=1`;
     } else {
         embedUrl = `${VIDKING_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}?autoplay=1`;
-    }
-
-    // Update status badge
-    if (isAdBlockOn) {
-        adblockStatus.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Ad-Block Active';
-        adblockStatus.className = 'adblock-status active';
-    } else {
-        adblockStatus.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Ad-Block Disabled';
-        adblockStatus.className = 'adblock-status inactive';
     }
 
     iframeContainer.innerHTML = `
@@ -301,7 +306,6 @@ function loadIframe() {
             width="100%" 
             height="100%" 
             frameborder="0" 
-            ${isAdBlockOn ? 'sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"' : ''}
             allowfullscreen>
         </iframe>
     `;
