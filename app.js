@@ -229,7 +229,7 @@ async function fetchFromTMDB(endpoint) {
         return await response.json();
     } catch (error) {
         console.error("Fetch error details:", error);
-        return null;
+        throw error; // Re-throw so performSearch can show the message
     }
 }
 
@@ -291,7 +291,7 @@ async function performSearch() {
         document.getElementById('movies-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (e) {
         console.error("Search Logic Error:", e);
-        alert("Search failed. This is usually caused by an invalid API key or network block.");
+        alert(`Search failed: ${e.message}\n\nCheck your API key or network connection.`);
     } finally {
         searchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
         searchBtn.disabled = false;
