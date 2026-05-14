@@ -240,10 +240,15 @@ async function loadContent() {
 
         // Update Hero
         const heroMovie = moviesData.results[0];
-        document.getElementById('hero-title').textContent = heroMovie.title;
-        document.getElementById('hero-overview').textContent = heroMovie.overview;
-        document.querySelector('.hero-backdrop').style.backgroundImage = `url(https://image.tmdb.org/t/p/original${heroMovie.backdrop_path})`;
-        document.querySelector('.hero .btn-primary').setAttribute('onclick', `openPlayer('movie', '${heroMovie.id}')`);
+        const heroTitle = document.getElementById('hero-title');
+        const heroOverview = document.getElementById('hero-overview');
+        const heroBackdrop = document.querySelector('.hero-backdrop');
+        const heroBtn = document.querySelector('.hero .btn-primary');
+
+        if (heroTitle) heroTitle.textContent = heroMovie.title;
+        if (heroOverview) heroOverview.textContent = heroMovie.overview;
+        if (heroBackdrop) heroBackdrop.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${heroMovie.backdrop_path})`;
+        if (heroBtn) heroBtn.setAttribute('onclick', `openPlayer('movie', '${heroMovie.id}', '${heroMovie.title.replace(/'/g, "\\'")}')`);
     } else {
         renderDemoContent();
     }
@@ -272,7 +277,8 @@ async function performSearch() {
         // Search Movies
         const moviesSearch = await fetchFromTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
         if (moviesSearch && moviesSearch.results && moviesSearch.results.length > 0) {
-            document.querySelector('.content-section:nth-of-type(1) h2').textContent = `Search Results: Movies`;
+            const movieHeading = document.querySelector('.content-section:nth-of-type(1) h2');
+            if (movieHeading) movieHeading.textContent = `Search Results: Movies`;
             moviesGrid.innerHTML = moviesSearch.results.filter(m => m.poster_path).slice(0, 10).map(m => renderMediaCard(m, 'movie')).join('');
         } else {
             moviesGrid.innerHTML = '<p class="no-results">No movies found.</p>';
@@ -281,7 +287,8 @@ async function performSearch() {
         // Search Shows
         const showsSearch = await fetchFromTMDB(`/search/tv?query=${encodeURIComponent(query)}`);
         if (showsSearch && showsSearch.results && showsSearch.results.length > 0) {
-            document.querySelector('.content-section:nth-of-type(2) h2').textContent = `Search Results: TV Shows`;
+            const showHeading = document.querySelector('.content-section:nth-of-type(2) h2');
+            if (showHeading) showHeading.textContent = `Search Results: TV Shows`;
             showsGrid.innerHTML = showsSearch.results.filter(s => s.poster_path).slice(0, 10).map(s => renderMediaCard(s, 'tv')).join('');
         } else {
             showsGrid.innerHTML = '<p class="no-results">No shows found.</p>';
@@ -306,7 +313,9 @@ window.openPlayer = function (type, id, title) {
     currentMedia.episode = 1;
 
     // Update title
-    playerTitle.textContent = title || (type === 'movie' ? 'Movie' : 'TV Show');
+    if (playerTitle) {
+        playerTitle.textContent = title || (type === 'movie' ? 'Movie' : 'TV Show');
+    }
 
     // Reset selects
     seasonSelect.value = "1";
