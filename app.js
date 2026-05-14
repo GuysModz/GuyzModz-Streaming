@@ -241,29 +241,35 @@ async function performSearch() {
     }
 
     searchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    searchBtn.disabled = true;
 
-    // Search Movies
-    const moviesSearch = await fetchFromTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
-    if (moviesSearch && moviesSearch.results && moviesSearch.results.length > 0) {
-        document.querySelector('.content-section:nth-of-type(1) h2').textContent = `Search Results: Movies`;
-        moviesGrid.innerHTML = moviesSearch.results.filter(m => m.poster_path).slice(0, 10).map(m => renderMediaCard(m, 'movie')).join('');
-    } else {
-        moviesGrid.innerHTML = '<p class="no-results">No movies found.</p>';
+    try {
+        // Search Movies
+        const moviesSearch = await fetchFromTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
+        if (moviesSearch && moviesSearch.results && moviesSearch.results.length > 0) {
+            document.querySelector('.content-section:nth-of-type(1) h2').textContent = `Search Results: Movies`;
+            moviesGrid.innerHTML = moviesSearch.results.filter(m => m.poster_path).slice(0, 10).map(m => renderMediaCard(m, 'movie')).join('');
+        } else {
+            moviesGrid.innerHTML = '<p class="no-results">No movies found.</p>';
+        }
+
+        // Search Shows
+        const showsSearch = await fetchFromTMDB(`/search/tv?query=${encodeURIComponent(query)}`);
+        if (showsSearch && showsSearch.results && showsSearch.results.length > 0) {
+            document.querySelector('.content-section:nth-of-type(2) h2').textContent = `Search Results: TV Shows`;
+            showsGrid.innerHTML = showsSearch.results.filter(s => s.poster_path).slice(0, 10).map(s => renderMediaCard(s, 'tv')).join('');
+        } else {
+            showsGrid.innerHTML = '<p class="no-results">No shows found.</p>';
+        }
+
+        // Scroll down to results
+        document.getElementById('movies-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) {
+        console.error(e);
+    } finally {
+        searchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
+        searchBtn.disabled = false;
     }
-
-    // Search Shows
-    const showsSearch = await fetchFromTMDB(`/search/tv?query=${encodeURIComponent(query)}`);
-    if (showsSearch && showsSearch.results && showsSearch.results.length > 0) {
-        document.querySelector('.content-section:nth-of-type(2) h2').textContent = `Search Results: TV Shows`;
-        showsGrid.innerHTML = showsSearch.results.filter(s => s.poster_path).slice(0, 10).map(s => renderMediaCard(s, 'tv')).join('');
-    } else {
-        showsGrid.innerHTML = '<p class="no-results">No shows found.</p>';
-    }
-
-    searchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
-
-    // Scroll down to results
-    document.getElementById('movies-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // Player Logic
