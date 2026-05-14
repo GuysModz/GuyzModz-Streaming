@@ -2,10 +2,13 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
 
 // PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
-const DEFAULT_API_KEY = 'b80a71388447e647e1ff09bd1fd41a4f';
+const DEFAULT_API_KEY = '%%TMDB_KEY_PLACEHOLDER%%'; 
 
 function getApiKey() {
-    return localStorage.getItem('tmdb_api_key') || DEFAULT_API_KEY;
+    const stored = localStorage.getItem('tmdb_api_key');
+    if (stored) return stored;
+    if (DEFAULT_API_KEY && !DEFAULT_API_KEY.includes('PLACEHOLDER')) return DEFAULT_API_KEY;
+    return null;
 }
 
 // DOM Elements
@@ -110,11 +113,21 @@ function setupEventListeners() {
         if (e.target === playerModal) closePlayer();
     });
 
-    // API Key UI
+    // Add Key Button
     addKeyBtn.addEventListener('click', () => {
         apiKeyModal.classList.add('active');
         apiKeyInput.value = getApiKey() || '';
     });
+
+    // Navbar Key Icon (Settings)
+    const navKeyBtn = document.getElementById('nav-key-btn');
+    if (navKeyBtn) {
+        navKeyBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            apiKeyModal.classList.add('active');
+            apiKeyInput.value = getApiKey() || '';
+        });
+    }
 
     dismissNoticeBtn.addEventListener('click', () => {
         apiNotice.classList.remove('show');
