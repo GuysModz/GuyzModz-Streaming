@@ -64,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
     checkApiKey();
     setupEventListeners();
 
-    // Generate episode options
-    populateEpisodeSelect();
+    // Generate default season and episode options
+    populateSeasonSelect(5);
 });
 
 function initScrollEffect() {
@@ -119,6 +119,51 @@ function setupEventListeners() {
         apiKeyInput.value = getApiKey() || '';
     });
 
+    // Mobile Menu
+    const hamburger = document.getElementById('hamburger');
+    const closeMobileMenu = document.getElementById('close-mobile-menu');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const mobileSearchToggle = document.getElementById('mobile-search-toggle');
+
+    if (hamburger) {
+        hamburger.addEventListener('click', () => {
+            mobileMenu.classList.add('active');
+        });
+    }
+
+    if (closeMobileMenu) {
+        closeMobileMenu.addEventListener('click', () => {
+            mobileMenu.classList.remove('active');
+        });
+    }
+
+    if (mobileSearchToggle) {
+        mobileSearchToggle.addEventListener('click', () => {
+            navbar.classList.toggle('search-active');
+            if (navbar.classList.contains('search-active')) {
+                searchInput.focus();
+            }
+        });
+    }
+
+    // Close mobile menu when link is clicked
+    document.querySelectorAll('.mobile-menu-links a').forEach(link => {
+        link.addEventListener('click', () => {
+            mobileMenu.classList.remove('active');
+        });
+    });
+
+    // Mobile Key Button
+    const navKeyMobile = document.querySelector('.nav-key-mobile');
+    if (navKeyMobile) {
+        navKeyMobile.addEventListener('click', (e) => {
+            e.preventDefault();
+            mobileMenu.classList.remove('active');
+            apiKeyModal.classList.add('active');
+            apiKeyInput.value = getApiKey() || '';
+        });
+    }
+
     // Navbar Key Icon (Settings)
     const navKeyBtn = document.getElementById('nav-key-btn');
     if (navKeyBtn) {
@@ -149,6 +194,12 @@ function setupEventListeners() {
     });
 
     // TV Controls
+    seasonSelect.addEventListener('change', () => {
+        const selectedOption = seasonSelect.options[seasonSelect.selectedIndex];
+        const episodeCount = selectedOption ? (selectedOption.dataset.episodeCount || 24) : 24;
+        populateEpisodeSelect(episodeCount);
+    });
+
     updateEpisodeBtn.addEventListener('click', () => {
         currentMedia.season = seasonSelect.value;
         currentMedia.episode = episodeSelect.value;
@@ -162,13 +213,63 @@ function setupEventListeners() {
     });
 }
 
-function populateEpisodeSelect() {
+function populateSeasonSelect(seasonsData, isDataArray = false) {
+    seasonSelect.innerHTML = '';
+    if (isDataArray) {
+        seasonsData.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.season_number;
+            option.textContent = s.name || `Season ${s.season_number}`;
+            option.dataset.episodeCount = s.episode_count;
+            seasonSelect.appendChild(option);
+        });
+        if (seasonsData.length > 0) {
+            populateEpisodeSelect(seasonsData[0].episode_count);
+        } else {
+            populateEpisodeSelect(24);
+        }
+    } else {
+        const count = typeof seasonsData === 'number' ? seasonsData : 5;
+        for (let i = 1; i <= count; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = `Season ${i}`;
+            option.dataset.episodeCount = 24;
+            seasonSelect.appendChild(option);
+        }
+        populateEpisodeSelect(24);
+    }
+}
+
+function populateEpisodeSelect(count = 24) {
     episodeSelect.innerHTML = '';
-    for (let i = 1; i <= 24; i++) {
+    const maxEpisodes = parseInt(count) || 24;
+    for (let i = 1; i <= maxEpisodes; i++) {
         const option = document.createElement('option');
         option.value = i;
         option.textContent = `Episode ${i}`;
         episodeSelect.appendChild(option);
+    }
+}
+
+async function loadTVDetails(id) {
+    const key = getApiKey();
+    if (!key) {
+        populateSeasonSelect(5);
+        return;
+    }
+
+    try {
+        const tvData = await fetchFromTMDB(`/tv/${id}`);
+        if (tvData && tvData.seasons) {
+            const regularSeasons = tvData.seasons.filter(s => s.season_number > 0);
+            populateSeasonSelect(regularSeasons.length > 0 ? regularSeasons : tvData.seasons, true);
+        } else {
+            populateSeasonSelect(5);
+        }
+    } catch (e) {
+        console.error("Failed to fetch TV details", e);
+        populateSeasonSelect(5);
     }
 }
 
@@ -305,11 +406,13 @@ async function performSearch() {
     }
 }
 
+let currentModalRequestId = 0;
+
 // Player Logic
-window.openPlayer = function (type, id, title) {
+window.openPlayer = async function (type, id, title) {
+    const requestId = ++currentModalRequestId;
     currentMedia.type = type;
     currentMedia.id = id;
-    currentMedia.season = 1;
     currentMedia.episode = 1;
 
     // Update title
@@ -317,19 +420,37 @@ window.openPlayer = function (type, id, title) {
         playerTitle.textContent = title || (type === 'movie' ? 'Movie' : 'TV Show');
     }
 
-    // Reset selects
-    seasonSelect.value = "1";
-    episodeSelect.value = "1";
+    playerModal.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    iframeContainer.innerHTML = '<div style="color:white; display:flex; justify-content:center; align-items:center; height:100%;">Loading Player...</div>';
 
     if (type === 'tv') {
         tvControls.classList.remove('hidden');
+        seasonSelect.innerHTML = '<option>Loading...</option>';
+        episodeSelect.innerHTML = '<option>Loading...</option>';
+        
+        await loadTVDetails(id);
+        
+        if (requestId !== currentModalRequestId || !playerModal.classList.contains('active')) return;
+        
+        if (seasonSelect.options.length > 0) {
+            currentMedia.season = seasonSelect.options[0].value;
+            seasonSelect.value = currentMedia.season;
+        } else {
+            currentMedia.season = 1;
+        }
     } else {
         tvControls.classList.add('hidden');
+        currentMedia.season = 1;
     }
 
-    loadIframe();
-    playerModal.classList.add('active');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    if (episodeSelect.options.length > 0) {
+        episodeSelect.value = "1";
+    }
+
+    if (requestId === currentModalRequestId && playerModal.classList.contains('active')) {
+        loadIframe();
+    }
 };
 
 function loadIframe() {
@@ -357,6 +478,8 @@ function closePlayer() {
     document.body.style.overflow = 'auto';
     // Clear iframe to stop playback
     setTimeout(() => {
-        iframeContainer.innerHTML = '';
+        if (!playerModal.classList.contains('active')) {
+            iframeContainer.innerHTML = '';
+        }
     }, 300);
 }

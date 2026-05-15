@@ -30,6 +30,11 @@
             <a href="#">TV Shows</a>
             <a href="#" id="nav-key-btn" title="API Settings"><i class="fa-solid fa-key"></i></a>
         </div>
+
+        <div class="mobile-actions">
+            <button id="mobile-search-toggle" class="btn-icon"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <button id="hamburger" class="btn-icon"><i class="fa-solid fa-bars"></i></button>
+        </div>
     </header>
 
     <main class="container">
@@ -86,11 +91,7 @@
                 <div class="control-group">
                     <label for="season-select">Season:</label>
                     <select id="season-select">
-                        <option value="1">Season 1</option>
-                        <option value="2">Season 2</option>
-                        <option value="3">Season 3</option>
-                        <option value="4">Season 4</option>
-                        <option value="5">Season 5</option>
+                        <!-- Options generated dynamically based on fetched TV show data -->
                     </select>
                 </div>
                 <div class="control-group">
@@ -130,6 +131,19 @@
         <p>&copy; 2024 GuyzModz Stream. All rights reserved.</p>
         <p class="disclaimer">This site does not store any files on its server. All contents are provided by non-affiliated third parties.</p>
     </footer>
+
+    <div id="mobile-menu" class="mobile-menu">
+        <div class="mobile-menu-header">
+            <div class="logo"><i class="fa-solid fa-play"></i> GuyzModz<span>Stream</span></div>
+            <button id="close-mobile-menu" class="btn-icon"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="mobile-menu-links">
+            <a href="#" class="active">Home</a>
+            <a href="#">Movies</a>
+            <a href="#">TV Shows</a>
+            <a href="#" class="nav-key-mobile"><i class="fa-solid fa-key"></i> API Settings</a>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>
