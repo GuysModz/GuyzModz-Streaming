@@ -76,7 +76,30 @@
         </section>
     </main>
 
-
+    <!-- Player Modal (Full Window) -->
+    <div class="player-modal" id="player-modal">
+        <div class="modal-content full-window-modal">
+            <div class="player-top-bar">
+                <button class="close-modal" id="close-modal"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                <span id="player-title">Now Playing</span>
+            </div>
+            
+            <div class="iframe-container" id="iframe-container">
+                <!-- Iframe injected here -->
+            </div>
+            
+            <div id="tv-controls" class="tv-controls hidden">
+                <div class="control-group">
+                    <label for="season-select">Season:</label>
+                    <select id="season-select"></select>
+                </div>
+                <div class="control-group">
+                    <label for="episode-select">Episode:</label>
+                    <select id="episode-select"></select>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- API Key Notice -->
     <div class="api-notice" id="api-notice">

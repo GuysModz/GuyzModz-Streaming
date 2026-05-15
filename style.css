@@ -528,6 +528,65 @@ body {
     transform: scale(1);
 }
 
+/* Full Window Modal Styling */
+.full-window-modal {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 5% !important;
+    background: var(--bg-color);
+    transform: translateY(100%);
+    opacity: 0;
+}
+
+.player-modal.active .full-window-modal {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.player-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.player-top-bar .close-modal {
+    position: static;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    box-shadow: none;
+    transform: none !important;
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
+}
+
+.player-top-bar .close-modal:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--primary-color);
+}
+
+.player-top-bar #player-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.full-window-modal .iframe-container {
+    flex-grow: 1;
+    height: auto;
+    aspect-ratio: auto;
+    border-radius: 12px;
+}
+
 .close-modal {
     position: absolute;
     top: -20px;
