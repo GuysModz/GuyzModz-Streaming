@@ -1,5 +1,5 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const EMBED_BASE_URL = 'https://vidsrc.xyz/embed';
+const EMBED_BASE_URL = 'https://embed.su/embed';
 
 // Get params from URL
 const urlParams = new URLSearchParams(window.location.search);
