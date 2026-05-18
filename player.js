@@ -1,5 +1,5 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const EMBED_BASE_URL = 'https://vidbinge.to';
+const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
 
 // Get params from URL
 const urlParams = new URLSearchParams(window.location.search);
@@ -83,9 +83,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 function loadIframe() {
     let embedUrl = '';
     if (currentMedia.type === 'movie') {
-        embedUrl = `${EMBED_BASE_URL}/movie/${currentMedia.id}`;
+        embedUrl = `${VIDKING_BASE_URL}/movie/${currentMedia.id}`;
     } else {
-        embedUrl = `${EMBED_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}`;
+        embedUrl = `${VIDKING_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}`;
     }
 
     iframeContainer.innerHTML = `
