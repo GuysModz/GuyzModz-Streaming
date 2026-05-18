@@ -1,5 +1,5 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const EMBED_BASE_URL = 'https://embed.su/embed';
+const EMBED_BASE_URL = 'https://vidbinge.to';
 
 // PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
 const DEFAULT_API_KEY = '%%TMDB_KEY_PLACEHOLDER%%'; 
