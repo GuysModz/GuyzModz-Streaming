@@ -1,5 +1,5 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
+const EMBED_BASE_URL = 'https://vidsrc.xyz/embed';
 
 // PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
 const DEFAULT_API_KEY = '%%TMDB_KEY_PLACEHOLDER%%'; 
@@ -395,9 +395,9 @@ function loadIframe() {
     let embedUrl = '';
 
     if (currentMedia.type === 'movie') {
-        embedUrl = `${VIDKING_BASE_URL}/movie/${currentMedia.id}?autoplay=1`;
+        embedUrl = `${EMBED_BASE_URL}/movie/${currentMedia.id}`;
     } else {
-        embedUrl = `${VIDKING_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}?autoplay=1`;
+        embedUrl = `${EMBED_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}`;
     }
 
     iframeContainer.innerHTML = `
