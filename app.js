@@ -677,10 +677,19 @@ function renderSportsGrid() {
 
     let filtered = sportsChannels;
     if (activeSportsFilter !== 'all') {
-        const query = activeSportsFilter.toLowerCase();
-        filtered = sportsChannels.filter(channel => 
-            channel.name.toLowerCase().includes(query)
-        );
+        filtered = sportsChannels.filter(channel => {
+            const name = channel.name.toLowerCase();
+            switch (activeSportsFilter) {
+                case 'ncaa':
+                    return name.includes('ncaa') || name.includes('college') || name.includes('sec network') || name.includes('acc network') || name.includes('big ten') || name.includes('pac-12');
+                case 'soccer':
+                    return name.includes('soccer') || name.includes('laliga') || name.includes('bundesliga') || name.includes('premier league') || name.includes('champions league') || name.includes('uefa') || name.includes('mls') || (name.includes('football') && !name.includes('nfl') && !name.includes('ncaa') && !name.includes('college'));
+                case 'f1':
+                    return name.includes('f1') || name.includes('formula') || name.includes('motorsport') || name.includes('nascar') || name.includes('moto gp');
+                default:
+                    return name.includes(activeSportsFilter.toLowerCase());
+            }
+        });
     } else {
         // Limit to 20 stable feeds if no filter is active to prevent page bloat
         filtered = sportsChannels.slice(0, 20);
