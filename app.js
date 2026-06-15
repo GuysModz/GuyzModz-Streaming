@@ -2,7 +2,7 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
 
 // PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
-const DEFAULT_API_KEY = '%%TMDB_KEY_PLACEHOLDER%%'; 
+const DEFAULT_API_KEY = ''; 
 
 function getApiKey() {
     const stored = localStorage.getItem('tmdb_api_key');
