@@ -81,22 +81,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function loadIframe() {
-    let embedUrl = '';
-    if (currentMedia.type === 'movie') {
-        embedUrl = `${VIDKING_BASE_URL}/movie/${currentMedia.id}`;
-    } else {
-        embedUrl = `${VIDKING_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}`;
-    }
+    if (currentMedia.type === 'sports') {
+        iframeContainer.innerHTML = `
+            <video id="live-player" controls autoplay style="width: 100%; height: 100%; background: #000; border-radius: 12px;"></video>
+        `;
+        
+        const video = document.getElementById('live-player');
+        const streamUrl = currentMedia.id;
 
-    iframeContainer.innerHTML = `
-        <iframe 
-            src="${embedUrl}" 
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            allowfullscreen>
-        </iframe>
-    `;
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(streamUrl);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
+            });
+            window.activeHlsInstance = hls;
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = streamUrl;
+            video.addEventListener('loadedmetadata', () => {
+                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
+            });
+        }
+    } else {
+        let embedUrl = '';
+        if (currentMedia.type === 'movie') {
+            embedUrl = `${VIDKING_BASE_URL}/movie/${currentMedia.id}`;
+        } else {
+            embedUrl = `${VIDKING_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}`;
+        }
+
+        iframeContainer.innerHTML = `
+            <iframe 
+                src="${embedUrl}" 
+                width="100%" 
+                height="100%" 
+                frameborder="0" 
+                allowfullscreen>
+            </iframe>
+        `;
+    }
 }
 
 async function fetchFromTMDB(endpoint) {

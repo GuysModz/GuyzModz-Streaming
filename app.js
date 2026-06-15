@@ -455,6 +455,14 @@ async function performSearch() {
             if (seeAllBtn) seeAllBtn.style.display = 'none';
         }
 
+        // Search Sports
+        if (sportsChannels && sportsChannels.length > 0) {
+            const sportsHeading = document.querySelector('#sports-section h2');
+            if (sportsHeading) sportsHeading.textContent = `Search Results: Live Sports`;
+            activeSportsFilter = query; // Use query as custom filter string
+            renderSportsGrid();
+        }
+
         // Scroll down to results
         document.getElementById('movies-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (e) {
