@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
     <div class="background-effects">
@@ -28,6 +29,7 @@
             <a href="#" class="active">Home</a>
             <a href="#">Movies</a>
             <a href="#">TV Shows</a>
+            <a href="#" id="nav-sports-btn">Live Sports</a>
             <a href="#" id="nav-key-btn" title="API Settings"><i class="fa-solid fa-key"></i></a>
         </div>
 
@@ -72,6 +74,22 @@
             </div>
             <div class="media-grid" id="shows-grid">
                 <!-- Shows will be injected here -->
+            </div>
+        </section>
+
+        <section class="content-section" id="sports-section">
+            <div class="section-header">
+                <h2>Live Sports Channels</h2>
+                <div class="filter-tabs" id="sports-filters">
+                    <button class="filter-tab active" data-filter="all">All</button>
+                    <button class="filter-tab" data-filter="nfl">NFL</button>
+                    <button class="filter-tab" data-filter="nba">NBA</button>
+                    <button class="filter-tab" data-filter="espn">ESPN</button>
+                    <button class="filter-tab" data-filter="sky">Sky Sports</button>
+                </div>
+            </div>
+            <div class="media-grid" id="sports-grid">
+                <!-- Live Sports will be injected here -->
             </div>
         </section>
     </main>
@@ -137,6 +155,7 @@
             <a href="#" class="active">Home</a>
             <a href="#">Movies</a>
             <a href="#">TV Shows</a>
+            <a href="#" id="nav-sports-mobile">Live Sports</a>
             <a href="#" class="nav-key-mobile"><i class="fa-solid fa-key"></i> API Settings</a>
         </div>
     </div>

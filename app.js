@@ -41,8 +41,10 @@ let currentMedia = {
 };
 let currentMoviesList = [];
 let currentShowsList = [];
+let sportsChannels = [];
 let isMoviesExpanded = false;
 let isShowsExpanded = false;
+let activeSportsFilter = 'all';
 
 // Demo Data (Fallback when no API key is present)
 const demoMovies = [
@@ -67,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkApiKey();
     setupEventListeners();
     populateSeasonSelect(5);
+    loadLiveSports();
 });
 
 function initScrollEffect() {
@@ -169,6 +172,41 @@ function setupEventListeners() {
             e.preventDefault();
             apiKeyModal.classList.add('active');
             apiKeyInput.value = getApiKey() || '';
+        });
+    }
+
+    // Live Sports Navigation (Desktop)
+    const navSportsBtn = document.getElementById('nav-sports-btn');
+    if (navSportsBtn) {
+        navSportsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const sportsSec = document.getElementById('sports-section');
+            if (sportsSec) sportsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    // Live Sports Navigation (Mobile)
+    const navSportsMobile = document.getElementById('nav-sports-mobile');
+    if (navSportsMobile) {
+        navSportsMobile.addEventListener('click', (e) => {
+            e.preventDefault();
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileMenu) mobileMenu.classList.remove('active');
+            const sportsSec = document.getElementById('sports-section');
+            if (sportsSec) sportsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    // Live Sports Filters
+    const sportsFiltersContainer = document.getElementById('sports-filters');
+    if (sportsFiltersContainer) {
+        sportsFiltersContainer.querySelectorAll('.filter-tab').forEach(button => {
+            button.addEventListener('click', (e) => {
+                sportsFiltersContainer.querySelectorAll('.filter-tab').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                activeSportsFilter = button.dataset.filter;
+                renderSportsGrid();
+            });
         });
     }
 
@@ -476,29 +514,57 @@ window.openPlayer = async function (type, id, title) {
 };
 
 function loadIframe() {
-    let embedUrl = '';
+    if (currentMedia.type === 'sports') {
+        iframeContainer.innerHTML = `
+            <video id="live-player" controls autoplay style="width: 100%; height: 100%; background: #000; border-radius: 12px;"></video>
+        `;
+        
+        const video = document.getElementById('live-player');
+        const streamUrl = currentMedia.id;
 
-    if (currentMedia.type === 'movie') {
-        embedUrl = `${VIDKING_BASE_URL}/movie/${currentMedia.id}`;
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(streamUrl);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
+            });
+            window.activeHlsInstance = hls;
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = streamUrl;
+            video.addEventListener('loadedmetadata', () => {
+                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
+            });
+        }
     } else {
-        embedUrl = `${VIDKING_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}`;
-    }
+        let embedUrl = '';
+        if (currentMedia.type === 'movie') {
+            embedUrl = `${VIDKING_BASE_URL}/movie/${currentMedia.id}`;
+        } else {
+            embedUrl = `${VIDKING_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}`;
+        }
 
-    iframeContainer.innerHTML = `
-        <iframe 
-            src="${embedUrl}" 
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            allowfullscreen>
-        </iframe>
-    `;
+        iframeContainer.innerHTML = `
+            <iframe 
+                src="${embedUrl}" 
+                width="100%" 
+                height="100%" 
+                frameborder="0" 
+                allowfullscreen>
+            </iframe>
+        `;
+    }
 }
 
 function closePlayer() {
     playerModal.classList.remove('active');
     document.body.style.overflow = 'auto';
-    // Clear iframe to stop playback
+    
+    if (window.activeHlsInstance) {
+        window.activeHlsInstance.destroy();
+        window.activeHlsInstance = null;
+    }
+
     setTimeout(() => {
         if (!playerModal.classList.contains('active')) {
             iframeContainer.innerHTML = '';
@@ -564,4 +630,84 @@ async function loadTVDetails(id) {
         console.error("Failed to fetch TV details", e);
         populateSeasonSelect(5);
     }
+}
+
+async function loadLiveSports() {
+    const sportsGrid = document.getElementById('sports-grid');
+    if (!sportsGrid) return;
+
+    sportsGrid.innerHTML = '<div style="color:var(--text-muted); padding: 20px;">Loading Live Channels...</div>';
+
+    try {
+        const res = await fetch('https://iptv-org.github.io/iptv/categories/sports.m3u');
+        if (!res.ok) throw new Error('Failed to fetch sports playlist');
+        const data = await res.text();
+
+        const lines = data.split('\n');
+        const parsed = [];
+        let currentItem = {};
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line.startsWith('#EXTINF:')) {
+                const nameMatch = line.match(/,(.+)$/);
+                currentItem.name = nameMatch ? nameMatch[1].trim() : 'Unknown Channel';
+                
+                const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                currentItem.logo = logoMatch ? logoMatch[1] : '';
+            } else if (line.startsWith('http')) {
+                currentItem.url = line;
+                parsed.push(currentItem);
+                currentItem = {};
+            }
+        }
+
+        // Store all parsed channels for filtering
+        sportsChannels = parsed;
+        renderSportsGrid();
+    } catch (e) {
+        console.error("Error loading sports stream:", e);
+        sportsGrid.innerHTML = '<p class="no-results">Failed to load live sports streams.</p>';
+    }
+}
+
+function renderSportsGrid() {
+    const sportsGrid = document.getElementById('sports-grid');
+    if (!sportsGrid) return;
+
+    let filtered = sportsChannels;
+    if (activeSportsFilter !== 'all') {
+        const query = activeSportsFilter.toLowerCase();
+        filtered = sportsChannels.filter(channel => 
+            channel.name.toLowerCase().includes(query)
+        );
+    } else {
+        // Limit to 20 stable feeds if no filter is active to prevent page bloat
+        filtered = sportsChannels.slice(0, 20);
+    }
+
+    if (filtered.length === 0) {
+        sportsGrid.innerHTML = '<p class="no-results">No active channels found for this filter.</p>';
+        return;
+    }
+
+    sportsGrid.innerHTML = filtered.map(channel => {
+        const logo = channel.logo || 'https://via.placeholder.com/300x200?text=Sports+Live';
+        return `
+            <div class="media-card" onclick="window.openPlayer('sports', '${channel.url}', '${channel.name.replace(/'/g, "\\'")}')">
+                <div class="poster-wrapper">
+                    <img src="${logo}" alt="${channel.name}" class="poster" loading="lazy" style="object-fit: contain; padding: 10px; background: #111;">
+                    <div class="play-overlay">
+                        <i class="fa-solid fa-circle-play"></i>
+                    </div>
+                </div>
+                <div class="media-info">
+                    <div class="media-title">${channel.name}</div>
+                    <div class="media-meta">
+                        <span>Live Broadcast</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
