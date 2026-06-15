@@ -236,11 +236,18 @@ function setupEventListeners() {
     const playCustomBtn = document.getElementById('play-custom-btn');
     const customStreamTitle = document.getElementById('custom-stream-title');
     const customStreamUrl = document.getElementById('custom-stream-url');
+    const customSearchInput = document.getElementById('custom-search-input');
+    const customSearchResults = document.getElementById('custom-search-results');
 
     if (customStreamBtn && customStreamModal) {
         customStreamBtn.addEventListener('click', (e) => {
             e.preventDefault();
             customStreamModal.classList.add('active');
+            if (customSearchInput) {
+                customSearchInput.value = '';
+                if (customSearchResults) customSearchResults.innerHTML = '';
+                customSearchInput.focus();
+            }
         });
     }
 
@@ -264,6 +271,38 @@ function setupEventListeners() {
             window.openPlayer('sports', url, title);
         });
     }
+
+    if (customSearchInput && customSearchResults) {
+        customSearchInput.addEventListener('input', () => {
+            const query = customSearchInput.value.trim().toLowerCase();
+            if (!query) {
+                customSearchResults.innerHTML = '';
+                return;
+            }
+
+            const matches = sportsChannels.filter(channel => 
+                channel.name.toLowerCase().includes(query)
+            ).slice(0, 30); // Limit to top 30 matches for UI neatness
+
+            if (matches.length === 0) {
+                customSearchResults.innerHTML = '<div style="color: var(--text-muted); padding: 5px; font-size: 0.85rem;">No channels found.</div>';
+                return;
+            }
+
+            customSearchResults.innerHTML = matches.map(channel => `
+                <button class="btn btn-secondary" style="text-align: left; width: 100%; padding: 0.5rem 1rem; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--glass-border); border-radius: 8px; background: rgba(255,255,255,0.02); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-bottom: 0.3rem;" onclick="window.playSearchChannel('${channel.url}', '${channel.name.replace(/'/g, "\\'")}')">
+                    <span>${channel.name}</span>
+                    <span style="font-size: 0.75rem; opacity: 0.6;"><i class="fa-solid fa-play"></i> Watch</span>
+                </button>
+            `).join('');
+        });
+    }
+
+    // Helper for playing channel from search
+    window.playSearchChannel = (url, name) => {
+        if (customStreamModal) customStreamModal.classList.remove('active');
+        window.openPlayer('sports', url, name);
+    };
 
     // Search
     searchBtn.addEventListener('click', performSearch);

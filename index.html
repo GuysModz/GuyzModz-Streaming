@@ -152,13 +152,24 @@
 
     <!-- Custom Stream Modal -->
     <div class="api-modal player-modal" id="custom-stream-modal">
-        <div class="modal-content key-modal-content">
+        <div class="modal-content key-modal-content" style="max-height: 90vh; display: flex; flex-direction: column;">
             <button class="close-modal" id="close-custom-modal"><i class="fa-solid fa-xmark"></i></button>
-            <h2>Play Custom Stream</h2>
-            <p>Paste a direct HLS (.m3u8) stream URL below to watch it.</p>
-            <input type="text" id="custom-stream-title" placeholder="Stream Title (e.g., Lakers vs Celtics, UFC)..." class="form-input" style="margin-bottom: 1rem;">
-            <input type="text" id="custom-stream-url" placeholder="Stream URL (https://example.com/live.m3u8)..." class="form-input">
-            <button class="btn btn-primary" id="play-custom-btn" style="margin-top: 1.5rem; width: 100%;">Play Stream</button>
+            <h2>Find & Play Streams</h2>
+            
+            <!-- Channel Search Section -->
+            <div style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1.2rem; margin-bottom: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <p style="font-size: 0.9rem; color: var(--text-muted);">Search thousands of live channels instantly:</p>
+                <input type="text" id="custom-search-input" placeholder="Type channel name (e.g., ESPN, Fox, Sky, TNT)..." class="form-input">
+                <div id="custom-search-results" style="max-height: 180px; overflow-y: auto; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem;"></div>
+            </div>
+
+            <!-- Manual URL Section -->
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <p style="font-size: 0.9rem; color: var(--text-muted);">Or play a direct stream link manually:</p>
+                <input type="text" id="custom-stream-title" placeholder="Stream Title (e.g., Live Game, UFC)..." class="form-input" style="margin-bottom: 0.5rem;">
+                <input type="text" id="custom-stream-url" placeholder="Stream URL (https://example.com/live.m3u8)..." class="form-input">
+                <button class="btn btn-primary" id="play-custom-btn" style="margin-top: 0.5rem; width: 100%;">Play Manual Stream</button>
+            </div>
         </div>
     </div>
 
