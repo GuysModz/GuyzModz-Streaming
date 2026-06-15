@@ -636,31 +636,51 @@ async function loadLiveSports() {
     const sportsGrid = document.getElementById('sports-grid');
     if (!sportsGrid) return;
 
-    sportsGrid.innerHTML = '<div style="color:var(--text-muted); padding: 20px;">Loading Live Channels...</div>';
+    sportsGrid.innerHTML = '<div style="color:var(--text-muted); padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading Live Channels...</div>';
+
+    const urls = [
+        'https://iptv-org.github.io/iptv/categories/sports.m3u',
+        'https://iptv-org.github.io/iptv/countries/us.m3u',
+        'https://iptv-org.github.io/iptv/countries/ca.m3u',
+        'https://iptv-org.github.io/iptv/countries/uk.m3u'
+    ];
 
     try {
-        const res = await fetch('https://iptv-org.github.io/iptv/categories/sports.m3u');
-        if (!res.ok) throw new Error('Failed to fetch sports playlist');
-        const data = await res.text();
+        // Fetch all in parallel
+        const responses = await Promise.all(
+            urls.map(url => fetch(url).then(r => r.text()).catch(err => {
+                console.warn(`Failed to fetch playlist: ${url}`, err);
+                return '';
+            }))
+        );
 
-        const lines = data.split('\n');
         const parsed = [];
-        let currentItem = {};
+        const seenUrls = new Set();
 
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (line.startsWith('#EXTINF:')) {
-                const nameMatch = line.match(/,(.+)$/);
-                currentItem.name = nameMatch ? nameMatch[1].trim() : 'Unknown Channel';
-                
-                const logoMatch = line.match(/tvg-logo="([^"]+)"/);
-                currentItem.logo = logoMatch ? logoMatch[1] : '';
-            } else if (line.startsWith('http')) {
-                currentItem.url = line;
-                parsed.push(currentItem);
-                currentItem = {};
+        responses.forEach(data => {
+            if (!data) return;
+            const lines = data.split('\n');
+            let currentItem = {};
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const nameMatch = line.match(/,(.+)$/);
+                    currentItem.name = nameMatch ? nameMatch[1].trim() : 'Unknown Channel';
+                    
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    currentItem.logo = logoMatch ? logoMatch[1] : '';
+                } else if (line.startsWith('http')) {
+                    currentItem.url = line;
+                    // Deduplicate
+                    if (currentItem.url && !seenUrls.has(currentItem.url)) {
+                        seenUrls.add(currentItem.url);
+                        parsed.push(currentItem);
+                    }
+                    currentItem = {};
+                }
             }
-        }
+        });
 
         // Store all parsed channels for filtering
         sportsChannels = parsed;
@@ -680,8 +700,18 @@ function renderSportsGrid() {
         filtered = sportsChannels.filter(channel => {
             const name = channel.name.toLowerCase();
             switch (activeSportsFilter) {
+                case 'nfl':
+                    return name.includes('nfl') || name.includes('redzone');
+                case 'nba':
+                    return name.includes('nba') || name.includes('basketball');
+                case 'nhl':
+                    return name.includes('nhl') || name.includes('hockey');
+                case 'ufc':
+                    return name.includes('ufc') || name.includes('mma') || name.includes('fight') || name.includes('combat') || name.includes('wrestling') || name.includes('boxing') || name.includes('dazn') || name.includes('boxeo');
                 case 'ncaa':
                     return name.includes('ncaa') || name.includes('college') || name.includes('sec network') || name.includes('acc network') || name.includes('big ten') || name.includes('pac-12');
+                case 'mlb':
+                    return name.includes('mlb') || name.includes('baseball');
                 case 'soccer':
                     return name.includes('soccer') || name.includes('laliga') || name.includes('bundesliga') || name.includes('premier league') || name.includes('champions league') || name.includes('uefa') || name.includes('mls') || (name.includes('football') && !name.includes('nfl') && !name.includes('ncaa') && !name.includes('college'));
                 case 'f1':
