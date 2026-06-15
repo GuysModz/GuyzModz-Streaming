@@ -229,6 +229,42 @@ function setupEventListeners() {
         }
     });
 
+    // Custom Stream Modal Handlers
+    const customStreamBtn = document.getElementById('custom-stream-btn');
+    const customStreamModal = document.getElementById('custom-stream-modal');
+    const closeCustomModalBtn = document.getElementById('close-custom-modal');
+    const playCustomBtn = document.getElementById('play-custom-btn');
+    const customStreamTitle = document.getElementById('custom-stream-title');
+    const customStreamUrl = document.getElementById('custom-stream-url');
+
+    if (customStreamBtn && customStreamModal) {
+        customStreamBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            customStreamModal.classList.add('active');
+        });
+    }
+
+    if (closeCustomModalBtn && customStreamModal) {
+        closeCustomModalBtn.addEventListener('click', () => {
+            customStreamModal.classList.remove('active');
+        });
+    }
+
+    if (playCustomBtn && customStreamModal) {
+        playCustomBtn.addEventListener('click', () => {
+            const title = customStreamTitle.value.trim() || 'Custom Stream';
+            const url = customStreamUrl.value.trim();
+
+            if (!url) {
+                alert('Please enter a valid stream URL.');
+                return;
+            }
+
+            customStreamModal.classList.remove('active');
+            window.openPlayer('sports', url, title);
+        });
+    }
+
     // Search
     searchBtn.addEventListener('click', performSearch);
     searchInput.addEventListener('keypress', (e) => {

@@ -78,20 +78,23 @@
         </section>
 
         <section class="content-section" id="sports-section">
-            <div class="section-header">
+            <div class="section-header" style="flex-wrap: wrap; gap: 1rem;">
                 <h2>Live Sports Channels</h2>
-                <div class="filter-tabs" id="sports-filters">
-                    <button class="filter-tab active" data-filter="all">All</button>
-                    <button class="filter-tab" data-filter="nfl">NFL</button>
-                    <button class="filter-tab" data-filter="nba">NBA</button>
-                    <button class="filter-tab" data-filter="ncaa">NCAA</button>
-                    <button class="filter-tab" data-filter="mlb">MLB</button>
-                    <button class="filter-tab" data-filter="nhl">NHL</button>
-                    <button class="filter-tab" data-filter="ufc">UFC</button>
-                    <button class="filter-tab" data-filter="soccer">Soccer</button>
-                    <button class="filter-tab" data-filter="f1">F1/Racing</button>
-                    <button class="filter-tab" data-filter="espn">ESPN</button>
-                    <button class="filter-tab" data-filter="sky">Sky Sports</button>
+                <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
+                    <div class="filter-tabs" id="sports-filters">
+                        <button class="filter-tab active" data-filter="all">All</button>
+                        <button class="filter-tab" data-filter="nfl">NFL</button>
+                        <button class="filter-tab" data-filter="nba">NBA</button>
+                        <button class="filter-tab" data-filter="ncaa">NCAA</button>
+                        <button class="filter-tab" data-filter="mlb">MLB</button>
+                        <button class="filter-tab" data-filter="nhl">NHL</button>
+                        <button class="filter-tab" data-filter="ufc">UFC</button>
+                        <button class="filter-tab" data-filter="soccer">Soccer</button>
+                        <button class="filter-tab" data-filter="f1">F1/Racing</button>
+                        <button class="filter-tab" data-filter="espn">ESPN</button>
+                        <button class="filter-tab" data-filter="sky">Sky Sports</button>
+                    </div>
+                    <button class="btn btn-secondary" id="custom-stream-btn" style="border-radius: 20px; padding: 0.5rem 1.2rem; font-size: 0.9rem; border: 1px solid var(--glass-border); height: 38px; display: inline-flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-plus"></i> Custom Link</button>
                 </div>
             </div>
             <div class="media-grid" id="sports-grid">
@@ -144,6 +147,18 @@
             <input type="text" id="api-key-input" placeholder="Enter TMDB API Key..." class="form-input">
             <p class="help-text">You can get one for free at <a href="https://www.themoviedb.org/settings/api" target="_blank">themoviedb.org</a>.</p>
             <button class="btn btn-primary" id="save-key-btn">Save Key</button>
+        </div>
+    </div>
+
+    <!-- Custom Stream Modal -->
+    <div class="api-modal player-modal" id="custom-stream-modal">
+        <div class="modal-content key-modal-content">
+            <button class="close-modal" id="close-custom-modal"><i class="fa-solid fa-xmark"></i></button>
+            <h2>Play Custom Stream</h2>
+            <p>Paste a direct HLS (.m3u8) stream URL below to watch it.</p>
+            <input type="text" id="custom-stream-title" placeholder="Stream Title (e.g., Lakers vs Celtics, UFC)..." class="form-input" style="margin-bottom: 1rem;">
+            <input type="text" id="custom-stream-url" placeholder="Stream URL (https://example.com/live.m3u8)..." class="form-input">
+            <button class="btn btn-primary" id="play-custom-btn" style="margin-top: 1.5rem; width: 100%;">Play Stream</button>
         </div>
     </div>
 
