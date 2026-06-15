@@ -39,6 +39,10 @@ let currentMedia = {
     season: 1,
     episode: 1
 };
+let currentMoviesList = [];
+let currentShowsList = [];
+let isMoviesExpanded = false;
+let isShowsExpanded = false;
 
 // Demo Data (Fallback when no API key is present)
 const demoMovies = [
@@ -193,6 +197,26 @@ function setupEventListeners() {
         if (e.key === 'Enter') performSearch();
     });
 
+    // See All / Show Less Movies
+    const seeAllMoviesBtn = document.getElementById('see-all-movies');
+    if (seeAllMoviesBtn) {
+        seeAllMoviesBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isMoviesExpanded = !isMoviesExpanded;
+            renderMovies();
+        });
+    }
+
+    // See All / Show Less Shows
+    const seeAllShowsBtn = document.getElementById('see-all-shows');
+    if (seeAllShowsBtn) {
+        seeAllShowsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isShowsExpanded = !isShowsExpanded;
+            renderShows();
+        });
+    }
+
     // TV Controls
     seasonSelect.addEventListener('change', () => {
         const selectedOption = seasonSelect.options[seasonSelect.selectedIndex];
@@ -240,8 +264,54 @@ function renderMediaCard(item, type) {
 }
 
 function renderDemoContent() {
-    moviesGrid.innerHTML = demoMovies.map(m => renderMediaCard(m, 'movie')).join('');
-    showsGrid.innerHTML = demoShows.map(s => renderMediaCard(s, 'tv')).join('');
+    currentMoviesList = demoMovies;
+    currentShowsList = demoShows;
+    isMoviesExpanded = false;
+    isShowsExpanded = false;
+    renderMovies();
+    renderShows();
+}
+
+function renderMovies() {
+    const list = currentMoviesList;
+    const limit = isMoviesExpanded ? list.length : 10;
+    moviesGrid.innerHTML = list.slice(0, limit).map(m => renderMediaCard(m, 'movie')).join('');
+    
+    // Update the "See All" button text and icon
+    const seeAllBtn = document.getElementById('see-all-movies');
+    if (seeAllBtn) {
+        if (list.length <= 10) {
+            seeAllBtn.style.display = 'none';
+        } else {
+            seeAllBtn.style.display = 'flex';
+            if (isMoviesExpanded) {
+                seeAllBtn.innerHTML = `Show Less <i class="fa-solid fa-chevron-up"></i>`;
+            } else {
+                seeAllBtn.innerHTML = `See All <i class="fa-solid fa-chevron-right"></i>`;
+            }
+        }
+    }
+}
+
+function renderShows() {
+    const list = currentShowsList;
+    const limit = isShowsExpanded ? list.length : 10;
+    showsGrid.innerHTML = list.slice(0, limit).map(s => renderMediaCard(s, 'tv')).join('');
+    
+    // Update the "See All" button text and icon
+    const seeAllBtn = document.getElementById('see-all-shows');
+    if (seeAllBtn) {
+        if (list.length <= 10) {
+            seeAllBtn.style.display = 'none';
+        } else {
+            seeAllBtn.style.display = 'flex';
+            if (isShowsExpanded) {
+                seeAllBtn.innerHTML = `Show Less <i class="fa-solid fa-chevron-up"></i>`;
+            } else {
+                seeAllBtn.innerHTML = `See All <i class="fa-solid fa-chevron-right"></i>`;
+            }
+        }
+    }
 }
 
 // Data Fetching
@@ -275,7 +345,8 @@ async function fetchFromTMDB(endpoint) {
 async function loadContent() {
     const moviesData = await fetchFromTMDB('/trending/movie/week');
     if (moviesData && moviesData.results) {
-        moviesGrid.innerHTML = moviesData.results.slice(0, 10).map(m => renderMediaCard(m, 'movie')).join('');
+        currentMoviesList = moviesData.results;
+        renderMovies();
 
         // Update Hero
         const heroMovie = moviesData.results[0];
@@ -294,7 +365,8 @@ async function loadContent() {
 
     const showsData = await fetchFromTMDB('/trending/tv/week');
     if (showsData && showsData.results) {
-        showsGrid.innerHTML = showsData.results.slice(0, 10).map(s => renderMediaCard(s, 'tv')).join('');
+        currentShowsList = showsData.results;
+        renderShows();
     }
 }
 
@@ -315,22 +387,34 @@ async function performSearch() {
     try {
         // Search Movies
         const moviesSearch = await fetchFromTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
+        const movieHeading = document.querySelector('.content-section:nth-of-type(1) h2');
         if (moviesSearch && moviesSearch.results && moviesSearch.results.length > 0) {
-            const movieHeading = document.querySelector('.content-section:nth-of-type(1) h2');
             if (movieHeading) movieHeading.textContent = `Search Results: Movies`;
-            moviesGrid.innerHTML = moviesSearch.results.filter(m => m.poster_path).slice(0, 10).map(m => renderMediaCard(m, 'movie')).join('');
+            currentMoviesList = moviesSearch.results.filter(m => m.poster_path);
+            isMoviesExpanded = false;
+            renderMovies();
         } else {
+            if (movieHeading) movieHeading.textContent = `Search Results: Movies`;
+            currentMoviesList = [];
             moviesGrid.innerHTML = '<p class="no-results">No movies found.</p>';
+            const seeAllBtn = document.getElementById('see-all-movies');
+            if (seeAllBtn) seeAllBtn.style.display = 'none';
         }
 
         // Search Shows
         const showsSearch = await fetchFromTMDB(`/search/tv?query=${encodeURIComponent(query)}`);
+        const showHeading = document.querySelector('.content-section:nth-of-type(2) h2');
         if (showsSearch && showsSearch.results && showsSearch.results.length > 0) {
-            const showHeading = document.querySelector('.content-section:nth-of-type(2) h2');
             if (showHeading) showHeading.textContent = `Search Results: TV Shows`;
-            showsGrid.innerHTML = showsSearch.results.filter(s => s.poster_path).slice(0, 10).map(s => renderMediaCard(s, 'tv')).join('');
+            currentShowsList = showsSearch.results.filter(s => s.poster_path);
+            isShowsExpanded = false;
+            renderShows();
         } else {
+            if (showHeading) showHeading.textContent = `Search Results: TV Shows`;
+            currentShowsList = [];
             showsGrid.innerHTML = '<p class="no-results">No shows found.</p>';
+            const seeAllBtn = document.getElementById('see-all-shows');
+            if (seeAllBtn) seeAllBtn.style.display = 'none';
         }
 
         // Scroll down to results
