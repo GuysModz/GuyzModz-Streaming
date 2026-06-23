@@ -2,7 +2,7 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
 
 // PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
-const DEFAULT_API_KEY = ''; 
+const DEFAULT_API_KEY = '';
 
 function getApiKey() {
     const stored = localStorage.getItem('tmdb_api_key');
@@ -11,613 +11,452 @@ function getApiKey() {
     return null;
 }
 
-// DOM Elements
-const navbar = document.querySelector('.navbar');
-const moviesGrid = document.getElementById('movies-grid');
-const showsGrid = document.getElementById('shows-grid');
-const playerModal = document.getElementById('player-modal');
-const closeModalBtn = document.getElementById('close-modal');
+// ── DOM refs ──────────────────────────────────────────────
+const navbar          = document.querySelector('.navbar');
+const moviesGrid      = document.getElementById('movies-grid');
+const showsGrid       = document.getElementById('shows-grid');
+const playerModal     = document.getElementById('player-modal');
+const closeModalBtn   = document.getElementById('close-modal');
 const iframeContainer = document.getElementById('iframe-container');
-const tvControls = document.getElementById('tv-controls');
-const seasonSelect = document.getElementById('season-select');
-const episodeSelect = document.getElementById('episode-select');
-const playerTitle = document.getElementById('player-title');
-const apiNotice = document.getElementById('api-notice');
-const addKeyBtn = document.getElementById('add-key-btn');
-const dismissNoticeBtn = document.getElementById('dismiss-notice');
-const apiKeyModal = document.getElementById('api-key-modal');
-const closeKeyModalBtn = document.getElementById('close-key-modal');
-const apiKeyInput = document.getElementById('api-key-input');
-const saveKeyBtn = document.getElementById('save-key-btn');
-const searchInput = document.getElementById('search-input');
-const searchBtn = document.getElementById('search-btn');
+const playerTitle     = document.getElementById('player-title');
+const apiNotice       = document.getElementById('api-notice');
+const addKeyBtn       = document.getElementById('add-key-btn');
+const dismissNoticeBtn= document.getElementById('dismiss-notice');
+const apiKeyModal     = document.getElementById('api-key-modal');
+const closeKeyModalBtn= document.getElementById('close-key-modal');
+const apiKeyInput     = document.getElementById('api-key-input');
+const saveKeyBtn      = document.getElementById('save-key-btn');
+const searchInput     = document.getElementById('search-input');
 
-// State
-let currentMedia = {
-    type: 'movie', // 'movie' or 'tv'
-    id: null,
-    season: 1,
-    episode: 1
-};
+// ── State ─────────────────────────────────────────────────
+let currentMedia = { type: 'movie', id: null, season: 1, episode: 1 };
 let currentMoviesList = [];
-let currentShowsList = [];
-let sportsChannels = [];
-let isMoviesExpanded = false;
-let isShowsExpanded = false;
-let activeSportsFilter = 'all';
+let currentShowsList  = [];
+let sportsChannels    = [];
+let activeSportsFilter= 'all';
+let searchFilter      = 'multi';
+let searchTimeout     = null;
+let currentDetailId   = null;
+let currentDetailType = null;
+let watchlist         = JSON.parse(localStorage.getItem('gm_watchlist') || '[]');
+let watchHistory      = JSON.parse(localStorage.getItem('gm_history') || '[]');
+let recentSearches    = JSON.parse(localStorage.getItem('gm_recent_searches') || '[]');
 
-// Demo Data (Fallback when no API key is present)
+// ── Demo Data ─────────────────────────────────────────────
 const demoMovies = [
-    { id: 533535, title: "Deadpool & Wolverine", poster_path: "/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg", vote_average: 7.7 },
-    { id: 1022789, title: "Inside Out 2", poster_path: "/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg", vote_average: 7.6 },
-    { id: 653346, title: "Kingdom of the Planet of the Apes", poster_path: "/gKkl37BQuKTanygYQG1pyYgLVgf.jpg", vote_average: 6.9 },
-    { id: 693134, title: "Dune: Part Two", poster_path: "/1pdfLvkbY9ohJlCjQH2IGpbRXYS.jpg", vote_average: 8.2 },
-    { id: 929590, title: "Civil War", poster_path: "/sh7Rg8Er3tFcN9BpKIPOMvALgZd.jpg", vote_average: 7.0 }
+    { id: 533535, title: "Deadpool & Wolverine", poster_path: "/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg", vote_average: 7.7, release_date: "2024-07-24" },
+    { id: 1022789, title: "Inside Out 2", poster_path: "/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg", vote_average: 7.6, release_date: "2024-06-14" },
+    { id: 653346, title: "Kingdom of the Planet of the Apes", poster_path: "/gKkl37BQuKTanygYQG1pyYgLVgf.jpg", vote_average: 6.9, release_date: "2024-05-08" },
+    { id: 693134, title: "Dune: Part Two", poster_path: "/1pdfLvkbY9ohJlCjQH2IGpbRXYS.jpg", vote_average: 8.2, release_date: "2024-02-28" },
+    { id: 929590, title: "Civil War", poster_path: "/sh7Rg8Er3tFcN9BpKIPOMvALgZd.jpg", vote_average: 7.0, release_date: "2024-04-12" }
 ];
-
 const demoShows = [
-    { id: 76479, name: "The Boys", poster_path: "/2quzoptnn7GZ4Z1hsS220H1o748.jpg", vote_average: 8.5 },
-    { id: 113988, name: "Fallout", poster_path: "/A3sD2kY0PZea8z7B38bV4Z83LhJ.jpg", vote_average: 8.4 },
-    { id: 1396, name: "Breaking Bad", poster_path: "/3xnWaLQjelJDDF7LT1WBo6f4BRe.jpg", vote_average: 8.9 },
-    { id: 66732, name: "Stranger Things", poster_path: "/49WJfeN0moxb9IPfGn8xkbjDSpw.jpg", vote_average: 8.6 },
-    { id: 108978, name: "Reacher", poster_path: "/jBJWaqmbOKA6RQydME2TlwqICg2.jpg", vote_average: 8.1 }
+    { id: 76479, name: "The Boys", poster_path: "/2quzoptnn7GZ4Z1hsS220H1o748.jpg", vote_average: 8.5, first_air_date: "2019-07-26" },
+    { id: 113988, name: "Fallout", poster_path: "/A3sD2kY0PZea8z7B38bV4Z83LhJ.jpg", vote_average: 8.4, first_air_date: "2024-04-11" },
+    { id: 1396, name: "Breaking Bad", poster_path: "/3xnWaLQjelJDDF7LT1WBo6f4BRe.jpg", vote_average: 8.9, first_air_date: "2008-01-20" },
+    { id: 66732, name: "Stranger Things", poster_path: "/49WJfeN0moxb9IPfGn8xkbjDSpw.jpg", vote_average: 8.6, first_air_date: "2016-07-15" },
+    { id: 108978, name: "Reacher", poster_path: "/jBJWaqmbOKA6RQydME2TlwqICg2.jpg", vote_average: 8.1, first_air_date: "2022-02-04" }
 ];
 
-// Initialize
+// ── Init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initScrollEffect();
     checkApiKey();
     setupEventListeners();
-    populateSeasonSelect(5);
     loadLiveSports();
+    renderRecentSearches();
 });
 
 function initScrollEffect() {
     window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) {
-            navbar.classList.add('scrolled');
-        } else {
-            navbar.classList.remove('scrolled');
-        }
+        navbar.classList.toggle('scrolled', window.scrollY > 50);
     });
 }
 
-// API Key Management
+// ── API Key ───────────────────────────────────────────────
 async function setApiKey(key) {
-    // Basic validation check
     const test = await fetch(`${TMDB_BASE_URL}/authentication?api_key=${key}`);
-    if (!test.ok) {
-        alert("Invalid API Key! Please use the shorter 'API Key' from TMDB, not the long 'Read Access Token'.");
-        return;
-    }
-
+    if (!test.ok) { alert("Invalid API Key!"); return; }
     localStorage.setItem('tmdb_api_key', key);
     apiKeyModal.classList.remove('active');
     apiNotice.classList.remove('show');
-    loadContent(); // Reload with actual data
+    loadContent();
 }
 
 function checkApiKey() {
     const key = getApiKey();
     if (!key) {
-        setTimeout(() => {
-            apiNotice.classList.add('show');
-        }, 2000);
+        setTimeout(() => apiNotice.classList.add('show'), 2000);
         renderDemoContent();
     } else {
         loadContent();
     }
 }
 
-// Event Listeners Setup
-function setupEventListeners() {
-    // Player Modal
-    closeModalBtn.addEventListener('click', closePlayer);
-    
-    // Add Key Button
-    addKeyBtn.addEventListener('click', () => {
-        apiKeyModal.classList.add('active');
-        apiKeyInput.value = getApiKey() || '';
-    });
-
-    // Mobile Menu
-    const hamburger = document.getElementById('hamburger');
-    const closeMobileMenu = document.getElementById('close-mobile-menu');
-    const mobileMenu = document.getElementById('mobile-menu');
-    const mobileSearchToggle = document.getElementById('mobile-search-toggle');
-
-    if (hamburger) {
-        hamburger.addEventListener('click', () => {
-            mobileMenu.classList.add('active');
-        });
-    }
-
-    if (closeMobileMenu) {
-        closeMobileMenu.addEventListener('click', () => {
-            mobileMenu.classList.remove('active');
-        });
-    }
-
-    if (mobileSearchToggle) {
-        mobileSearchToggle.addEventListener('click', () => {
-            navbar.classList.toggle('search-active');
-            if (navbar.classList.contains('search-active')) {
-                searchInput.focus();
-            }
-        });
-    }
-
-    // Close mobile menu when link is clicked
-    document.querySelectorAll('.mobile-menu-links a').forEach(link => {
-        link.addEventListener('click', () => {
-            mobileMenu.classList.remove('active');
-        });
-    });
-
-    // Mobile Key Button
-    const navKeyMobile = document.querySelector('.nav-key-mobile');
-    if (navKeyMobile) {
-        navKeyMobile.addEventListener('click', (e) => {
-            e.preventDefault();
-            mobileMenu.classList.remove('active');
-            apiKeyModal.classList.add('active');
-            apiKeyInput.value = getApiKey() || '';
-        });
-    }
-
-    // Navbar Key Icon (Settings)
-    const navKeyBtn = document.getElementById('nav-key-btn');
-    if (navKeyBtn) {
-        navKeyBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            apiKeyModal.classList.add('active');
-            apiKeyInput.value = getApiKey() || '';
-        });
-    }
-
-    // Live Sports Navigation (Desktop)
-    const navSportsBtn = document.getElementById('nav-sports-btn');
-    if (navSportsBtn) {
-        navSportsBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const sportsSec = document.getElementById('sports-section');
-            if (sportsSec) sportsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    }
-
-    // Live Sports Navigation (Mobile)
-    const navSportsMobile = document.getElementById('nav-sports-mobile');
-    if (navSportsMobile) {
-        navSportsMobile.addEventListener('click', (e) => {
-            e.preventDefault();
-            const mobileMenu = document.getElementById('mobile-menu');
-            if (mobileMenu) mobileMenu.classList.remove('active');
-            const sportsSec = document.getElementById('sports-section');
-            if (sportsSec) sportsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    }
-
-    // Live Sports Filters
-    const sportsFiltersContainer = document.getElementById('sports-filters');
-    if (sportsFiltersContainer) {
-        sportsFiltersContainer.querySelectorAll('.filter-tab').forEach(button => {
-            button.addEventListener('click', (e) => {
-                sportsFiltersContainer.querySelectorAll('.filter-tab').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                activeSportsFilter = button.dataset.filter;
-                renderSportsGrid();
-            });
-        });
-    }
-
-    dismissNoticeBtn.addEventListener('click', () => {
-        apiNotice.classList.remove('show');
-    });
-
-    closeKeyModalBtn.addEventListener('click', () => {
-        apiKeyModal.classList.remove('active');
-    });
-
-    saveKeyBtn.addEventListener('click', async () => {
-        const key = apiKeyInput.value.trim();
-        if (key) {
-            saveKeyBtn.disabled = true;
-            saveKeyBtn.textContent = "Validating...";
-            await setApiKey(key);
-            saveKeyBtn.disabled = false;
-            saveKeyBtn.textContent = "Save Key";
-        }
-    });
-
-    // Custom Stream Modal Handlers
-    const customStreamBtn = document.getElementById('custom-stream-btn');
-    const customStreamModal = document.getElementById('custom-stream-modal');
-    const closeCustomModalBtn = document.getElementById('close-custom-modal');
-    const playCustomBtn = document.getElementById('play-custom-btn');
-    const customStreamTitle = document.getElementById('custom-stream-title');
-    const customStreamUrl = document.getElementById('custom-stream-url');
-    const customSearchInput = document.getElementById('custom-search-input');
-    const customSearchResults = document.getElementById('custom-search-results');
-
-    if (customStreamBtn && customStreamModal) {
-        customStreamBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            customStreamModal.classList.add('active');
-            if (customSearchInput) {
-                customSearchInput.value = '';
-                if (customSearchResults) customSearchResults.innerHTML = '';
-                customSearchInput.focus();
-            }
-        });
-    }
-
-    if (closeCustomModalBtn && customStreamModal) {
-        closeCustomModalBtn.addEventListener('click', () => {
-            customStreamModal.classList.remove('active');
-        });
-    }
-
-    if (playCustomBtn && customStreamModal) {
-        playCustomBtn.addEventListener('click', () => {
-            const title = customStreamTitle.value.trim() || 'Custom Stream';
-            const url = customStreamUrl.value.trim();
-
-            if (!url) {
-                alert('Please enter a valid stream URL.');
-                return;
-            }
-
-            customStreamModal.classList.remove('active');
-            window.openPlayer('sports', url, title);
-        });
-    }
-
-    if (customSearchInput && customSearchResults) {
-        customSearchInput.addEventListener('input', () => {
-            const query = customSearchInput.value.trim().toLowerCase();
-            if (!query) {
-                customSearchResults.innerHTML = '';
-                return;
-            }
-
-            const matches = sportsChannels.filter(channel => 
-                channel.name.toLowerCase().includes(query)
-            ).slice(0, 30); // Limit to top 30 matches for UI neatness
-
-            if (matches.length === 0) {
-                customSearchResults.innerHTML = '<div style="color: var(--text-muted); padding: 5px; font-size: 0.85rem;">No channels found.</div>';
-                return;
-            }
-
-            customSearchResults.innerHTML = matches.map(channel => `
-                <button class="btn btn-secondary" style="text-align: left; width: 100%; padding: 0.5rem 1rem; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--glass-border); border-radius: 8px; background: rgba(255,255,255,0.02); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-bottom: 0.3rem;" onclick="window.playSearchChannel('${channel.url}', '${channel.name.replace(/'/g, "\\'")}')">
-                    <span>${channel.name}</span>
-                    <span style="font-size: 0.75rem; opacity: 0.6;"><i class="fa-solid fa-play"></i> Watch</span>
-                </button>
-            `).join('');
-        });
-    }
-
-    // Helper for playing channel from search
-    window.playSearchChannel = (url, name) => {
-        if (customStreamModal) customStreamModal.classList.remove('active');
-        window.openPlayer('sports', url, name);
-    };
-
-    // Search
-    searchBtn.addEventListener('click', performSearch);
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') performSearch();
-    });
-
-    // See All / Show Less Movies
-    const seeAllMoviesBtn = document.getElementById('see-all-movies');
-    if (seeAllMoviesBtn) {
-        seeAllMoviesBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            isMoviesExpanded = !isMoviesExpanded;
-            renderMovies();
-        });
-    }
-
-    // See All / Show Less Shows
-    const seeAllShowsBtn = document.getElementById('see-all-shows');
-    if (seeAllShowsBtn) {
-        seeAllShowsBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            isShowsExpanded = !isShowsExpanded;
-            renderShows();
-        });
-    }
-
-    // TV Controls
-    seasonSelect.addEventListener('change', () => {
-        const selectedOption = seasonSelect.options[seasonSelect.selectedIndex];
-        const episodeCount = selectedOption ? (selectedOption.dataset.episodeCount || 24) : 24;
-        populateEpisodeSelect(episodeCount);
-        
-        currentMedia.season = seasonSelect.value;
-        currentMedia.episode = episodeSelect.value;
-        loadIframe();
-    });
-
-    episodeSelect.addEventListener('change', () => {
-        currentMedia.season = seasonSelect.value;
-        currentMedia.episode = episodeSelect.value;
-        loadIframe();
-    });
-}
-
-// Render Functions
-function renderMediaCard(item, type) {
-    const title = type === 'movie' ? item.title : item.name;
-    const date = type === 'movie' ? (item.release_date || '').split('-')[0] : (item.first_air_date || '').split('-')[0];
-    const rating = item.vote_average ? item.vote_average.toFixed(1) : 'NR';
-    const poster = item.poster_path
-        ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-        : 'https://via.placeholder.com/500x750?text=No+Poster';
-
-    return `
-        <div class="media-card" onclick="window.openPlayer('${type}', '${item.id}', '${title.replace(/'/g, "\\'")}')">
-            <div class="poster-wrapper">
-                <img src="${poster}" alt="${title}" class="poster" loading="lazy">
-                <div class="play-overlay">
-                    <i class="fa-solid fa-circle-play"></i>
-                </div>
-            </div>
-            <div class="media-info">
-                <div class="media-title">${title}</div>
-                <div class="media-meta">
-                    <span>${date}</span>
-                    <span class="rating"><i class="fa-solid fa-star"></i> ${rating}</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function renderDemoContent() {
-    currentMoviesList = demoMovies;
-    currentShowsList = demoShows;
-    isMoviesExpanded = false;
-    isShowsExpanded = false;
-    renderMovies();
-    renderShows();
-}
-
-function renderMovies() {
-    const list = currentMoviesList;
-    const limit = isMoviesExpanded ? list.length : 10;
-    moviesGrid.innerHTML = list.slice(0, limit).map(m => renderMediaCard(m, 'movie')).join('');
-    
-    // Update the "See All" button text and icon
-    const seeAllBtn = document.getElementById('see-all-movies');
-    if (seeAllBtn) {
-        if (list.length <= 10) {
-            seeAllBtn.style.display = 'none';
-        } else {
-            seeAllBtn.style.display = 'flex';
-            if (isMoviesExpanded) {
-                seeAllBtn.innerHTML = `Show Less <i class="fa-solid fa-chevron-up"></i>`;
-            } else {
-                seeAllBtn.innerHTML = `See All <i class="fa-solid fa-chevron-right"></i>`;
-            }
-        }
-    }
-}
-
-function renderShows() {
-    const list = currentShowsList;
-    const limit = isShowsExpanded ? list.length : 10;
-    showsGrid.innerHTML = list.slice(0, limit).map(s => renderMediaCard(s, 'tv')).join('');
-    
-    // Update the "See All" button text and icon
-    const seeAllBtn = document.getElementById('see-all-shows');
-    if (seeAllBtn) {
-        if (list.length <= 10) {
-            seeAllBtn.style.display = 'none';
-        } else {
-            seeAllBtn.style.display = 'flex';
-            if (isShowsExpanded) {
-                seeAllBtn.innerHTML = `Show Less <i class="fa-solid fa-chevron-up"></i>`;
-            } else {
-                seeAllBtn.innerHTML = `See All <i class="fa-solid fa-chevron-right"></i>`;
-            }
-        }
-    }
-}
-
-// Data Fetching
+// ── TMDB Fetch ────────────────────────────────────────────
 async function fetchFromTMDB(endpoint) {
     const key = getApiKey();
-    if (!key) {
-        console.warn("No API key found.");
-        return null;
-    }
-
+    if (!key) return null;
     try {
-        const separator = endpoint.includes('?') ? '&' : '?';
-        const url = `${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`;
-        console.log("Fetching from TMDB:", url.replace(key, 'HIDDEN'));
-        
-        const response = await fetch(url);
-        console.log("TMDB Response Status:", response.status);
-        
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            console.error("TMDB Error Details:", errData);
-            throw new Error(`TMDB Error: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error("Fetch error details:", error);
-        throw error; // Re-throw so performSearch can show the message
-    }
+        const sep = endpoint.includes('?') ? '&' : '?';
+        const res = await fetch(`${TMDB_BASE_URL}${endpoint}${sep}api_key=${key}&language=en-US`);
+        if (!res.ok) throw new Error(`TMDB Error: ${res.status}`);
+        return await res.json();
+    } catch (e) { console.error(e); return null; }
 }
 
+// ── Content Loading ───────────────────────────────────────
 async function loadContent() {
+    // Hero + Top10 + Trending from trending movies
     const moviesData = await fetchFromTMDB('/trending/movie/week');
-    if (moviesData && moviesData.results) {
+    if (moviesData?.results) {
         currentMoviesList = moviesData.results;
         renderMovies();
-
-        // Update Hero
-        const heroMovie = moviesData.results[0];
-        const heroTitle = document.getElementById('hero-title');
-        const heroOverview = document.getElementById('hero-overview');
-        const heroBackdrop = document.querySelector('.hero-backdrop');
-        const heroBtn = document.querySelector('.hero .btn-primary');
-
-        if (heroTitle) heroTitle.textContent = heroMovie.title;
-        if (heroOverview) heroOverview.textContent = heroMovie.overview;
-        if (heroBackdrop) heroBackdrop.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${heroMovie.backdrop_path})`;
-        if (heroBtn) heroBtn.setAttribute('onclick', `openPlayer('movie', '${heroMovie.id}', '${heroMovie.title.replace(/'/g, "\\'")}')`);
+        updateHero(moviesData.results[0], 'movie');
+        renderTop10(moviesData.results.slice(0, 10));
+        renderTrending(moviesData.results, 'movie');
     } else {
         renderDemoContent();
     }
 
     const showsData = await fetchFromTMDB('/trending/tv/week');
-    if (showsData && showsData.results) {
+    if (showsData?.results) {
         currentShowsList = showsData.results;
         renderShows();
     }
+
+    // Top rated movies default
+    const topRatedMovies = await fetchFromTMDB('/movie/top_rated');
+    if (topRatedMovies?.results) renderTopRated(topRatedMovies.results, 'movie');
 }
 
-async function performSearch() {
-    const query = searchInput.value.trim();
-    if (!query) return;
+function updateHero(item, type) {
+    if (!item) return;
+    const title = type === 'movie' ? item.title : item.name;
+    const year  = (type === 'movie' ? item.release_date : item.first_air_date || '').split('-')[0];
+    const rating = item.vote_average?.toFixed(1) || 'NR';
+
+    document.getElementById('hero-title').textContent = title;
+    document.getElementById('hero-overview').textContent = item.overview;
+    document.getElementById('hero-rating-val').textContent = rating;
+    document.getElementById('hero-year').textContent = year;
+    document.getElementById('hero-type-badge').textContent = type === 'movie' ? 'Movie' : 'TV Show';
+    if (item.backdrop_path) {
+        document.getElementById('hero-backdrop').style.backgroundImage = `url(https://image.tmdb.org/t/p/original${item.backdrop_path})`;
+    }
+    document.getElementById('hero-watch-btn').onclick = () => openDetailPage(type, item.id, title);
+    document.getElementById('hero-info-btn').onclick   = () => openDetailPage(type, item.id, title);
+
+    const wlBtn = document.getElementById('hero-watchlist-btn');
+    const inWL = watchlist.some(w => w.id == item.id);
+    wlBtn.innerHTML = inWL ? '<i class="fa-solid fa-bookmark"></i> In Watchlist' : '<i class="fa-regular fa-bookmark"></i> Watchlist';
+    wlBtn.onclick = () => toggleWatchlist({ id: item.id, title, type, poster_path: item.poster_path });
+}
+
+function renderDemoContent() {
+    currentMoviesList = demoMovies;
+    currentShowsList  = demoShows;
+    renderMovies();
+    renderShows();
+    updateHero(demoMovies[0], 'movie');
+    renderTop10(demoMovies);
+    renderTrending(demoMovies, 'movie');
+    renderTopRated(demoMovies, 'movie');
+}
+
+// ── Top 10 Row ────────────────────────────────────────────
+function renderTop10(items) {
+    const grid = document.getElementById('top10-grid');
+    if (!grid) return;
+    grid.innerHTML = items.slice(0, 10).map((item, i) => {
+        const title = item.title || item.name;
+        const type  = item.title ? 'movie' : 'tv';
+        const year  = (item.release_date || item.first_air_date || '').split('-')[0];
+        const rating = item.vote_average?.toFixed(1) || 'NR';
+        const poster = item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : 'https://via.placeholder.com/200x300?text=No+Poster';
+        return `
+        <div class="top10-card" onclick="openDetailPage('${type}', '${item.id}', '${title.replace(/'/g,"\\'")}')">
+            <div class="top10-rank">${String(i+1).padStart(2,'0')}</div>
+            <div class="top10-poster-wrap">
+                <img src="${poster}" alt="${title}" class="top10-poster" loading="lazy">
+                <div class="play-overlay"><i class="fa-solid fa-circle-play"></i></div>
+            </div>
+            <div class="top10-info">
+                <div class="media-title">${title}</div>
+                <div class="media-meta">
+                    <span class="rating"><i class="fa-solid fa-star"></i> ${rating}</span>
+                    <span>${year}</span>
+                    <span>${type === 'movie' ? 'Movie' : 'TV Show'}</span>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Trending Wide Row ─────────────────────────────────────
+function renderTrending(items, type) {
+    const grid = document.getElementById('trending-grid');
+    if (!grid) return;
+    grid.innerHTML = items.slice(0, 8).map(item => {
+        const title = item.title || item.name;
+        const year  = (item.release_date || item.first_air_date || '').split('-')[0];
+        const rating = item.vote_average?.toFixed(1) || 'NR';
+        const backdrop = item.backdrop_path ? `https://image.tmdb.org/t/p/w500${item.backdrop_path}` : (item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : '');
+        return `
+        <div class="wide-card" onclick="openDetailPage('${type}', '${item.id}', '${title.replace(/'/g,"\\'")}')">
+            <div class="wide-card-img" style="background-image: url('${backdrop}')">
+                <div class="play-overlay"><i class="fa-solid fa-circle-play"></i></div>
+            </div>
+            <div class="wide-card-info">
+                <div class="media-title">${title}</div>
+                <div class="media-meta">
+                    <span class="rating"><i class="fa-solid fa-star"></i> ${rating}</span>
+                    <span>${year}</span>
+                    <span>${type === 'movie' ? 'Movie' : 'TV Show'}</span>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Top Rated Wide Row ────────────────────────────────────
+function renderTopRated(items, type) {
+    const grid = document.getElementById('toprated-grid');
+    if (!grid) return;
+    grid.innerHTML = items.slice(0, 8).map(item => {
+        const title = item.title || item.name;
+        const year  = (item.release_date || item.first_air_date || '').split('-')[0];
+        const rating = item.vote_average?.toFixed(1) || 'NR';
+        const backdrop = item.backdrop_path ? `https://image.tmdb.org/t/p/w500${item.backdrop_path}` : (item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : '');
+        return `
+        <div class="wide-card" onclick="openDetailPage('${type}', '${item.id}', '${title.replace(/'/g,"\\'")}')">
+            <div class="wide-card-img" style="background-image: url('${backdrop}')">
+                <div class="play-overlay"><i class="fa-solid fa-circle-play"></i></div>
+            </div>
+            <div class="wide-card-info">
+                <div class="media-title">${title}</div>
+                <div class="media-meta">
+                    <span class="rating"><i class="fa-solid fa-star"></i> ${rating}</span>
+                    <span>${year}</span>
+                    <span>${type === 'movie' ? 'Movie' : 'TV Show'}</span>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Standard Card Grids ───────────────────────────────────
+function renderMediaCard(item, type) {
+    const title  = type === 'movie' ? item.title : item.name;
+    const date   = (type === 'movie' ? item.release_date : item.first_air_date || '').split('-')[0];
+    const rating = item.vote_average ? item.vote_average.toFixed(1) : 'NR';
+    const poster = item.poster_path
+        ? `https://image.tmdb.org/t/p/w342${item.poster_path}`
+        : 'https://via.placeholder.com/342x513?text=No+Poster';
+    return `
+    <div class="media-card" onclick="openDetailPage('${type}', '${item.id}', '${title.replace(/'/g,"\\'")}')">
+        <div class="poster-wrapper">
+            <img src="${poster}" alt="${title}" class="poster" loading="lazy">
+            <div class="play-overlay"><i class="fa-solid fa-circle-play"></i></div>
+        </div>
+        <div class="media-info">
+            <div class="media-title">${title}</div>
+            <div class="media-meta">
+                <span>${date}</span>
+                <span class="rating"><i class="fa-solid fa-star"></i> ${rating}</span>
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderMovies() {
+    moviesGrid.innerHTML = currentMoviesList.slice(0, 10).map(m => renderMediaCard(m, 'movie')).join('');
+    const btn = document.getElementById('see-all-movies');
+    if (btn) btn.style.display = currentMoviesList.length > 10 ? 'flex' : 'none';
+}
+function renderShows() {
+    showsGrid.innerHTML = currentShowsList.slice(0, 10).map(s => renderMediaCard(s, 'tv')).join('');
+    const btn = document.getElementById('see-all-shows');
+    if (btn) btn.style.display = currentShowsList.length > 10 ? 'flex' : 'none';
+}
+
+// ── DETAIL PAGE ───────────────────────────────────────────
+window.openDetailPage = async function(type, id, titleHint) {
+    currentDetailId   = id;
+    currentDetailType = type;
+
+    const detailPage = document.getElementById('detail-page');
+    detailPage.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    window.scrollTo(0, 0);
+
+    // Set placeholder while loading
+    document.getElementById('detail-title').textContent   = titleHint || 'Loading...';
+    document.getElementById('detail-overview').textContent = '';
+    document.getElementById('detail-rating').textContent   = '';
+    document.getElementById('detail-year').textContent     = '';
+    document.getElementById('detail-runtime').textContent  = '';
+    document.getElementById('detail-poster').src           = '';
+    document.getElementById('detail-backdrop').style.backgroundImage = '';
+    document.getElementById('actors-grid').innerHTML        = '';
+    document.getElementById('recommendations-grid').innerHTML = '';
+    document.getElementById('detail-episodes-section').style.display = 'none';
 
     const key = getApiKey();
     if (!key) {
-        alert("Please add your TMDB API key to use search functionality.");
-        apiKeyModal.classList.add('active');
+        // Demo mode - use demo data
+        const item = type === 'movie' ? demoMovies.find(m=>m.id==id)||demoMovies[0] : demoShows.find(s=>s.id==id)||demoShows[0];
+        fillDetailPage(item, type, null, [], []);
         return;
     }
 
-    searchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-    searchBtn.disabled = true;
+    // Parallel fetch: details + credits + recommendations
+    const [details, credits, recs] = await Promise.all([
+        fetchFromTMDB(`/${type}/${id}`),
+        fetchFromTMDB(`/${type}/${id}/credits`),
+        fetchFromTMDB(`/${type}/${id}/recommendations`)
+    ]);
 
-    try {
-        // Search Movies
-        const moviesSearch = await fetchFromTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
-        const movieHeading = document.querySelector('.content-section:nth-of-type(1) h2');
-        if (moviesSearch && moviesSearch.results && moviesSearch.results.length > 0) {
-            if (movieHeading) movieHeading.textContent = `Search Results: Movies`;
-            currentMoviesList = moviesSearch.results.filter(m => m.poster_path);
-            isMoviesExpanded = false;
-            renderMovies();
-        } else {
-            if (movieHeading) movieHeading.textContent = `Search Results: Movies`;
-            currentMoviesList = [];
-            moviesGrid.innerHTML = '<p class="no-results">No movies found.</p>';
-            const seeAllBtn = document.getElementById('see-all-movies');
-            if (seeAllBtn) seeAllBtn.style.display = 'none';
-        }
+    fillDetailPage(details, type, credits, recs?.results || [], details?.seasons || []);
 
-        // Search Shows
-        const showsSearch = await fetchFromTMDB(`/search/tv?query=${encodeURIComponent(query)}`);
-        const showHeading = document.querySelector('.content-section:nth-of-type(2) h2');
-        if (showsSearch && showsSearch.results && showsSearch.results.length > 0) {
-            if (showHeading) showHeading.textContent = `Search Results: TV Shows`;
-            currentShowsList = showsSearch.results.filter(s => s.poster_path);
-            isShowsExpanded = false;
-            renderShows();
-        } else {
-            if (showHeading) showHeading.textContent = `Search Results: TV Shows`;
-            currentShowsList = [];
-            showsGrid.innerHTML = '<p class="no-results">No shows found.</p>';
-            const seeAllBtn = document.getElementById('see-all-shows');
-            if (seeAllBtn) seeAllBtn.style.display = 'none';
-        }
+    // Add to history
+    if (details) {
+        const title = details.title || details.name;
+        addToHistory({ id, type, title, poster_path: details.poster_path });
+    }
+};
 
-        // Search Sports
-        if (sportsChannels && sportsChannels.length > 0) {
-            const sportsHeading = document.querySelector('#sports-section h2');
-            if (sportsHeading) sportsHeading.textContent = `Search Results: Live Sports`;
-            activeSportsFilter = query; // Use query as custom filter string
-            renderSportsGrid();
-        }
+function fillDetailPage(details, type, credits, recs, seasons) {
+    if (!details) return;
+    const title   = details.title || details.name;
+    const year    = (details.release_date || details.first_air_date || '').split('-')[0];
+    const rating  = details.vote_average?.toFixed(1) || 'NR';
+    const runtime = type === 'movie'
+        ? (details.runtime ? `${Math.floor(details.runtime/60)}h ${details.runtime%60}m` : '')
+        : (details.episode_run_time?.[0] ? `${details.episode_run_time[0]}m/ep` : '');
+    const poster  = details.poster_path ? `https://image.tmdb.org/t/p/w342${details.poster_path}` : '';
+    const backdrop= details.backdrop_path ? `https://image.tmdb.org/t/p/original${details.backdrop_path}` : '';
 
-        // Scroll down to results
-        document.getElementById('movies-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } catch (e) {
-        console.error("Search Logic Error:", e);
-        alert(`Search failed: ${e.message}\n\nCheck your API key or network connection.`);
-    } finally {
-        searchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
-        searchBtn.disabled = false;
+    document.getElementById('detail-title').textContent    = title;
+    document.getElementById('detail-overview').textContent = details.overview || '';
+    document.getElementById('detail-rating').textContent   = rating;
+    document.getElementById('detail-year').textContent     = year;
+    document.getElementById('detail-runtime').textContent  = runtime;
+    document.getElementById('detail-type-label').textContent = type === 'movie' ? 'Movie' : 'TV Show';
+    document.getElementById('detail-poster').src           = poster;
+    if (backdrop) document.getElementById('detail-backdrop').style.backgroundImage = `url('${backdrop}')`;
+
+    // Play button
+    const playBtn = document.getElementById('detail-play-btn');
+    playBtn.onclick = () => openPlayer(type, details.id, title);
+
+    // Watchlist button
+    const wlBtn = document.getElementById('detail-watchlist-btn');
+    const inWL  = watchlist.some(w => w.id == details.id);
+    wlBtn.innerHTML = inWL ? '<i class="fa-solid fa-bookmark"></i> In Watchlist' : '<i class="fa-regular fa-bookmark"></i> Watchlist';
+    wlBtn.onclick   = () => { toggleWatchlist({ id: details.id, title, type, poster_path: details.poster_path }); fillDetailPage(details, type, credits, recs, seasons); };
+
+    // Actors
+    const actors = (credits?.cast || []).slice(0, 12);
+    document.getElementById('actors-grid').innerHTML = actors.map(actor => {
+        const photo = actor.profile_path
+            ? `https://image.tmdb.org/t/p/w92${actor.profile_path}`
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=333&color=fff&size=64`;
+        return `
+        <div class="actor-card">
+            <img src="${photo}" alt="${actor.name}" class="actor-photo">
+            <div class="actor-info">
+                <div class="actor-name">${actor.name}</div>
+                <div class="actor-char">${actor.character || ''}</div>
+            </div>
+        </div>`;
+    }).join('');
+    document.getElementById('actors-section').style.display = actors.length ? '' : 'none';
+
+    // Recommendations
+    document.getElementById('recommendations-grid').innerHTML = recs.slice(0, 12).map(r => renderMediaCard(r, r.title ? 'movie' : 'tv')).join('');
+    document.getElementById('recommendations-section').style.display = recs.length ? '' : 'none';
+
+    // TV Episodes
+    if (type === 'tv' && seasons && seasons.length > 0) {
+        const regularSeasons = seasons.filter(s => s.season_number > 0);
+        const epSection = document.getElementById('detail-episodes-section');
+        epSection.style.display = '';
+        const seasonSel = document.getElementById('detail-season-select');
+        seasonSel.innerHTML = regularSeasons.map(s => `<option value="${s.season_number}" data-count="${s.episode_count}">${s.name || 'Season '+s.season_number}</option>`).join('');
+        loadEpisodes(details.id, regularSeasons[0]?.season_number || 1, regularSeasons[0]?.episode_count || 10);
+        seasonSel.onchange = () => {
+            const opt = seasonSel.options[seasonSel.selectedIndex];
+            loadEpisodes(details.id, seasonSel.value, opt.dataset.count);
+        };
     }
 }
 
+async function loadEpisodes(showId, seasonNum, episodeCount) {
+    const epList = document.getElementById('detail-episodes-list');
+    epList.innerHTML = '<div style="color:var(--text-muted); padding:1rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading episodes...</div>';
+
+    const key = getApiKey();
+    let episodes = [];
+    if (key) {
+        const data = await fetchFromTMDB(`/tv/${showId}/season/${seasonNum}`);
+        episodes = data?.episodes || [];
+    }
+
+    if (episodes.length === 0) {
+        // fallback: generate numbered episodes
+        episodes = Array.from({ length: parseInt(episodeCount) || 10 }, (_, i) => ({
+            episode_number: i + 1, name: `Episode ${i + 1}`, overview: '', still_path: null, runtime: null
+        }));
+    }
+
+    epList.innerHTML = episodes.map((ep, idx) => {
+        const still = ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : '';
+        const isFirst = idx === 0;
+        return `
+        <div class="episode-item ${isFirst ? 'episode-watching' : ''}" onclick="openPlayer('tv', ${showId}, '', ${seasonNum}, ${ep.episode_number})">
+            ${isFirst ? '<span class="watching-badge"><i class="fa-solid fa-play"></i> WATCHING</span>' : ''}
+            <div class="episode-num">${ep.episode_number}.</div>
+            ${still ? `<img src="${still}" alt="ep${ep.episode_number}" class="episode-still" loading="lazy">` : ''}
+            <div class="episode-text">
+                <div class="episode-title">${ep.name}</div>
+                <div class="episode-desc">${ep.overview ? ep.overview.substring(0,100)+'...' : ''}</div>
+                ${ep.runtime ? `<div class="episode-runtime">${ep.runtime}m left</div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function closeDetailPage() {
+    document.getElementById('detail-page').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+// ── Player ────────────────────────────────────────────────
 let currentModalRequestId = 0;
 
-// Player Logic
-window.openPlayer = async function (type, id, title) {
+window.openPlayer = function(type, id, title, season = 1, episode = 1) {
     const requestId = ++currentModalRequestId;
-    currentMedia.type = type;
-    currentMedia.id = id;
-    currentMedia.episode = 1;
-
-    // Update title
-    if (playerTitle) {
-        playerTitle.textContent = title || (type === 'movie' ? 'Movie' : 'TV Show');
-    }
-
+    currentMedia = { type, id, season, episode };
+    if (playerTitle) playerTitle.textContent = title || (type === 'movie' ? 'Movie' : 'TV Show');
     playerModal.classList.add('active');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
-    iframeContainer.innerHTML = '<div style="color:var(--text-muted); display:flex; justify-content:center; align-items:center; height:100%; font-size:1.2rem;"><i class="fa-solid fa-spinner fa-spin" style="margin-right: 10px;"></i> Loading Player...</div>';
-
-    if (type === 'tv') {
-        tvControls.classList.remove('hidden');
-        seasonSelect.innerHTML = '<option>Loading...</option>';
-        episodeSelect.innerHTML = '<option>Loading...</option>';
-        
-        await loadTVDetails(id);
-        
-        if (requestId !== currentModalRequestId || !playerModal.classList.contains('active')) return;
-        
-        if (seasonSelect.options.length > 0) {
-            currentMedia.season = seasonSelect.options[0].value;
-            seasonSelect.value = currentMedia.season;
-        } else {
-            currentMedia.season = 1;
-        }
-    } else {
-        tvControls.classList.add('hidden');
-        currentMedia.season = 1;
-    }
-
-    if (episodeSelect.options.length > 0) {
-        episodeSelect.value = "1";
-    }
-
-    if (requestId === currentModalRequestId && playerModal.classList.contains('active')) {
-        loadIframe();
-    }
+    document.body.style.overflow = 'hidden';
+    loadIframe();
 };
 
 function loadIframe() {
     if (currentMedia.type === 'sports') {
-        iframeContainer.innerHTML = `
-            <video id="live-player" controls autoplay style="width: 100%; height: 100%; background: #000; border-radius: 12px;"></video>
-        `;
-        
+        iframeContainer.innerHTML = `<video id="live-player" controls autoplay style="width:100%;height:100%;background:#000;border-radius:12px;"></video>`;
         const video = document.getElementById('live-player');
-        const streamUrl = currentMedia.id;
-
         if (Hls.isSupported()) {
             const hls = new Hls();
-            hls.loadSource(streamUrl);
+            hls.loadSource(currentMedia.id);
             hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
-            });
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
             window.activeHlsInstance = hls;
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = streamUrl;
-            video.addEventListener('loadedmetadata', () => {
-                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
-            });
+            video.src = currentMedia.id;
+            video.addEventListener('loadedmetadata', () => video.play().catch(()=>{}));
         }
     } else {
         let embedUrl = '';
@@ -626,150 +465,217 @@ function loadIframe() {
         } else {
             embedUrl = `${VIDKING_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}`;
         }
-
-        iframeContainer.innerHTML = `
-            <iframe 
-                src="${embedUrl}" 
-                width="100%" 
-                height="100%" 
-                frameborder="0" 
-                allowfullscreen>
-            </iframe>
-        `;
+        iframeContainer.innerHTML = `<iframe src="${embedUrl}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>`;
     }
 }
 
 function closePlayer() {
     playerModal.classList.remove('active');
     document.body.style.overflow = 'auto';
-    
-    if (window.activeHlsInstance) {
-        window.activeHlsInstance.destroy();
-        window.activeHlsInstance = null;
-    }
-
-    setTimeout(() => {
-        if (!playerModal.classList.contains('active')) {
-            iframeContainer.innerHTML = '';
-        }
-    }, 300);
+    if (window.activeHlsInstance) { window.activeHlsInstance.destroy(); window.activeHlsInstance = null; }
+    setTimeout(() => { if (!playerModal.classList.contains('active')) iframeContainer.innerHTML = ''; }, 300);
 }
 
-function populateSeasonSelect(seasonsData, isDataArray = false) {
-    seasonSelect.innerHTML = '';
-    if (isDataArray) {
-        seasonsData.forEach(s => {
-            const option = document.createElement('option');
-            option.value = s.season_number;
-            option.textContent = s.name || `Season ${s.season_number}`;
-            option.dataset.episodeCount = s.episode_count;
-            seasonSelect.appendChild(option);
-        });
-        if (seasonsData.length > 0) {
-            populateEpisodeSelect(seasonsData[0].episode_count);
-        } else {
-            populateEpisodeSelect(24);
-        }
-    } else {
-        const count = typeof seasonsData === 'number' ? seasonsData : 5;
-        for (let i = 1; i <= count; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = `Season ${i}`;
-            option.dataset.episodeCount = 24;
-            seasonSelect.appendChild(option);
-        }
-        populateEpisodeSelect(24);
-    }
+// ── Search ────────────────────────────────────────────────
+function renderRecentSearches() {
+    const list = document.getElementById('recent-searches-list');
+    const section = document.getElementById('search-recent-section');
+    if (!list) return;
+    if (recentSearches.length === 0) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    list.innerHTML = recentSearches.map(q => `
+        <div class="recent-item" onclick="runSearch('${q.replace(/'/g,"\\'")}')">
+            <i class="fa-regular fa-clock"></i> ${q}
+        </div>`).join('');
 }
 
-function populateEpisodeSelect(count = 24) {
-    episodeSelect.innerHTML = '';
-    const maxEpisodes = parseInt(count) || 24;
-    for (let i = 1; i <= maxEpisodes; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = `Episode ${i}`;
-        episodeSelect.appendChild(option);
-    }
+function addRecentSearch(query) {
+    recentSearches = [query, ...recentSearches.filter(q => q !== query)].slice(0, 5);
+    localStorage.setItem('gm_recent_searches', JSON.stringify(recentSearches));
+    renderRecentSearches();
 }
 
-async function loadTVDetails(id) {
+async function liveSearch(query) {
     const key = getApiKey();
+    const dropdown = document.getElementById('search-dropdown');
+    const resultsList = document.getElementById('search-results-list');
+    if (!query) { dropdown.classList.remove('show-results'); return; }
+
+    dropdown.classList.add('show-results');
+    resultsList.innerHTML = '<div class="search-loading"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+
     if (!key) {
-        populateSeasonSelect(5);
+        // demo search
+        const q = query.toLowerCase();
+        const all = [...demoMovies, ...demoShows];
+        const matches = all.filter(i => (i.title||i.name).toLowerCase().includes(q));
+        resultsList.innerHTML = matches.length ? matches.slice(0,6).map(item => searchResultCard(item)).join('') : '<div class="no-results-small">No results found.</div>';
         return;
     }
 
-    try {
-        const tvData = await fetchFromTMDB(`/tv/${id}`);
-        if (tvData && tvData.seasons) {
-            const regularSeasons = tvData.seasons.filter(s => s.season_number > 0);
-            populateSeasonSelect(regularSeasons.length > 0 ? regularSeasons : tvData.seasons, true);
-        } else {
-            populateSeasonSelect(5);
-        }
-    } catch (e) {
-        console.error("Failed to fetch TV details", e);
-        populateSeasonSelect(5);
-    }
+    let endpoint = '/search/multi';
+    if (searchFilter === 'movie') endpoint = '/search/movie';
+    else if (searchFilter === 'tv' || searchFilter === 'anime') endpoint = '/search/tv';
+
+    const data = await fetchFromTMDB(`${endpoint}?query=${encodeURIComponent(query)}`);
+    const results = (data?.results || []).filter(r => r.poster_path && (r.media_type !== 'person')).slice(0, 8);
+    resultsList.innerHTML = results.length ? results.map(item => searchResultCard(item)).join('') : '<div class="no-results-small">No results found.</div>';
 }
 
+function searchResultCard(item) {
+    const type  = item.media_type || (item.title ? 'movie' : 'tv');
+    const title = item.title || item.name;
+    const year  = (item.release_date || item.first_air_date || '').split('-')[0];
+    const poster = item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : '';
+    return `
+    <div class="search-result-item" onclick="openDetailPage('${type}','${item.id}','${title.replace(/'/g,"\\'")}'); closeSearchDropdown();">
+        ${poster ? `<img src="${poster}" alt="${title}" class="search-result-poster">` : '<div class="search-result-poster-ph"></div>'}
+        <div class="search-result-info">
+            <div class="search-result-title">${title}</div>
+            <div class="search-result-meta">${year} · ${type === 'movie' ? 'Movie' : 'TV Show'}</div>
+        </div>
+    </div>`;
+}
+
+async function runSearch(query) {
+    if (!query) return;
+    searchInput.value = query;
+    addRecentSearch(query);
+    closeSearchDropdown();
+    document.getElementById('search-dropdown').classList.remove('show-results');
+
+    const key = getApiKey();
+    const homeSections = document.getElementById('home-sections');
+    const sportsSection = document.getElementById('sports-section');
+
+    if (!key) { alert("Please add your TMDB API key to use full search."); apiKeyModal.classList.add('active'); return; }
+
+    const moviesSearch = await fetchFromTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
+    if (moviesSearch?.results) {
+        currentMoviesList = moviesSearch.results.filter(m => m.poster_path);
+        renderMovies();
+    }
+    const showsSearch = await fetchFromTMDB(`/search/tv?query=${encodeURIComponent(query)}`);
+    if (showsSearch?.results) {
+        currentShowsList = showsSearch.results.filter(s => s.poster_path);
+        renderShows();
+    }
+    moviesGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function closeSearchDropdown() {
+    document.getElementById('search-dropdown').classList.remove('show-results');
+}
+
+// ── Watchlist & History ───────────────────────────────────
+function toggleWatchlist(item) {
+    const idx = watchlist.findIndex(w => w.id == item.id);
+    if (idx >= 0) watchlist.splice(idx, 1);
+    else watchlist.unshift(item);
+    localStorage.setItem('gm_watchlist', JSON.stringify(watchlist));
+}
+
+function addToHistory(item) {
+    watchHistory = [item, ...watchHistory.filter(h => h.id != item.id)].slice(0, 50);
+    localStorage.setItem('gm_history', JSON.stringify(watchHistory));
+}
+
+function showWatchlist() {
+    currentMoviesList = watchlist.filter(i => i.type === 'movie');
+    currentShowsList  = watchlist.filter(i => i.type === 'tv');
+    renderMovies(); renderShows();
+    document.querySelector('.content-section:first-of-type h2') && (document.querySelector('#movies-grid').parentElement.querySelector('h2').textContent = 'Watchlist - Movies');
+}
+
+function showHistory() {
+    currentMoviesList = watchHistory.filter(i => i.type === 'movie');
+    currentShowsList  = watchHistory.filter(i => i.type === 'tv');
+    renderMovies(); renderShows();
+}
+
+// ── Category Filter ───────────────────────────────────────
+async function showCategory(type) {
+    if (type === '4k') {
+        const data = await fetchFromTMDB('/discover/movie?with_genres=28&sort_by=popularity.desc');
+        if (data?.results) { currentMoviesList = data.results; renderMovies(); }
+        return;
+    }
+    if (type === 'anime') {
+        const data = await fetchFromTMDB('/discover/tv?with_genres=16&sort_by=popularity.desc');
+        if (data?.results) { currentShowsList = data.results; renderShows(); }
+        return;
+    }
+    const endpoint = type === 'movie' ? '/movie/popular' : '/tv/popular';
+    const data = await fetchFromTMDB(endpoint);
+    if (type === 'movie' && data?.results) { currentMoviesList = data.results; renderMovies(); }
+    if (type === 'tv'    && data?.results) { currentShowsList  = data.results; renderShows(); }
+    document.getElementById('movies-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Reset Home ────────────────────────────────────────────
+function resetHome() {
+    searchInput.value = '';
+    checkApiKey();
+}
+
+// ── Browse Modal ──────────────────────────────────────────
+function closeBrowse() {
+    document.getElementById('browse-modal').classList.remove('active');
+}
+
+// ── Tab Switchers ─────────────────────────────────────────
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    const section = btn.dataset.section;
+    const type    = btn.dataset.type;
+    btn.closest('.section-header').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (section === 'trending') {
+        const endpoint = type === 'movie' ? '/trending/movie/week' : '/trending/tv/week';
+        const data = await fetchFromTMDB(endpoint);
+        if (data?.results) renderTrending(data.results, type);
+        else renderTrending(type === 'movie' ? demoMovies : demoShows, type);
+    } else if (section === 'toprated') {
+        const endpoint = type === 'movie' ? '/movie/top_rated' : '/tv/top_rated';
+        const data = await fetchFromTMDB(endpoint);
+        if (data?.results) renderTopRated(data.results, type);
+        else renderTopRated(type === 'movie' ? demoMovies : demoShows, type);
+    }
+});
+
+// ── Live Sports ───────────────────────────────────────────
 async function loadLiveSports() {
     const sportsGrid = document.getElementById('sports-grid');
     if (!sportsGrid) return;
-
     sportsGrid.innerHTML = '<div style="color:var(--text-muted); padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading Live Channels...</div>';
-
     const urls = [
         'https://iptv-org.github.io/iptv/categories/sports.m3u',
-        'https://iptv-org.github.io/iptv/countries/us.m3u',
-        'https://iptv-org.github.io/iptv/countries/ca.m3u',
-        'https://iptv-org.github.io/iptv/countries/uk.m3u'
+        'https://iptv-org.github.io/iptv/countries/us.m3u'
     ];
-
     try {
-        // Fetch all in parallel
-        const responses = await Promise.all(
-            urls.map(url => fetch(url).then(r => r.text()).catch(err => {
-                console.warn(`Failed to fetch playlist: ${url}`, err);
-                return '';
-            }))
-        );
-
-        const parsed = [];
-        const seenUrls = new Set();
-
+        const responses = await Promise.all(urls.map(url => fetch(url).then(r => r.text()).catch(() => '')));
+        const parsed = []; const seenUrls = new Set();
         responses.forEach(data => {
             if (!data) return;
             const lines = data.split('\n');
-            let currentItem = {};
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line.startsWith('#EXTINF:')) {
-                    const nameMatch = line.match(/,(.+)$/);
-                    currentItem.name = nameMatch ? nameMatch[1].trim() : 'Unknown Channel';
-                    
-                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
-                    currentItem.logo = logoMatch ? logoMatch[1] : '';
-                } else if (line.startsWith('http')) {
-                    currentItem.url = line;
-                    // Deduplicate
-                    if (currentItem.url && !seenUrls.has(currentItem.url)) {
-                        seenUrls.add(currentItem.url);
-                        parsed.push(currentItem);
-                    }
-                    currentItem = {};
+            let cur = {};
+            for (const line of lines) {
+                const l = line.trim();
+                if (l.startsWith('#EXTINF:')) {
+                    const nm = l.match(/,(.+)$/); cur.name = nm ? nm[1].trim() : 'Unknown';
+                    const lg = l.match(/tvg-logo="([^"]+)"/); cur.logo = lg ? lg[1] : '';
+                } else if (l.startsWith('http')) {
+                    cur.url = l;
+                    if (!seenUrls.has(l)) { seenUrls.add(l); parsed.push(cur); }
+                    cur = {};
                 }
             }
         });
-
-        // Store all parsed channels for filtering
         sportsChannels = parsed;
         renderSportsGrid();
     } catch (e) {
-        console.error("Error loading sports stream:", e);
         sportsGrid.innerHTML = '<p class="no-results">Failed to load live sports streams.</p>';
     }
 }
@@ -777,59 +683,152 @@ async function loadLiveSports() {
 function renderSportsGrid() {
     const sportsGrid = document.getElementById('sports-grid');
     if (!sportsGrid) return;
-
     let filtered = sportsChannels;
     if (activeSportsFilter !== 'all') {
-        filtered = sportsChannels.filter(channel => {
-            const name = channel.name.toLowerCase();
+        filtered = sportsChannels.filter(ch => {
+            const n = ch.name.toLowerCase();
             switch (activeSportsFilter) {
-                case 'nfl':
-                    return name.includes('nfl') || name.includes('redzone');
-                case 'nba':
-                    return name.includes('nba') || name.includes('basketball');
-                case 'nhl':
-                    return name.includes('nhl') || name.includes('hockey');
-                case 'ufc':
-                    return name.includes('ufc') || name.includes('mma') || name.includes('fight') || name.includes('combat') || name.includes('wrestling') || name.includes('boxing') || name.includes('dazn') || name.includes('boxeo');
-                case 'ncaa':
-                    return name.includes('ncaa') || name.includes('college') || name.includes('sec network') || name.includes('acc network') || name.includes('big ten') || name.includes('pac-12');
-                case 'mlb':
-                    return name.includes('mlb') || name.includes('baseball');
-                case 'soccer':
-                    return name.includes('soccer') || name.includes('laliga') || name.includes('bundesliga') || name.includes('premier league') || name.includes('champions league') || name.includes('uefa') || name.includes('mls') || (name.includes('football') && !name.includes('nfl') && !name.includes('ncaa') && !name.includes('college'));
-                case 'f1':
-                    return name.includes('f1') || name.includes('formula') || name.includes('motorsport') || name.includes('nascar') || name.includes('moto gp');
-                default:
-                    return name.includes(activeSportsFilter.toLowerCase());
+                case 'nfl': return n.includes('nfl') || n.includes('redzone');
+                case 'nba': return n.includes('nba') || n.includes('basketball');
+                case 'nhl': return n.includes('nhl') || n.includes('hockey');
+                case 'ufc': return n.includes('ufc') || n.includes('mma') || n.includes('fight') || n.includes('boxing');
+                case 'ncaa': return n.includes('ncaa') || n.includes('college') || n.includes('sec') || n.includes('big ten');
+                case 'mlb': return n.includes('mlb') || n.includes('baseball');
+                case 'soccer': return n.includes('soccer') || n.includes('laliga') || n.includes('bundesliga') || n.includes('premier league') || n.includes('mls');
+                case 'f1': return n.includes('f1') || n.includes('formula') || n.includes('nascar');
+                default: return n.includes(activeSportsFilter.toLowerCase());
             }
         });
     } else {
-        // Limit to 20 stable feeds if no filter is active to prevent page bloat
         filtered = sportsChannels.slice(0, 20);
     }
-
-    if (filtered.length === 0) {
-        sportsGrid.innerHTML = '<p class="no-results">No active channels found for this filter.</p>';
-        return;
-    }
-
-    sportsGrid.innerHTML = filtered.map(channel => {
-        const logo = channel.logo || 'https://via.placeholder.com/300x200?text=Sports+Live';
+    if (filtered.length === 0) { sportsGrid.innerHTML = '<p class="no-results">No channels found.</p>'; return; }
+    sportsGrid.innerHTML = filtered.map(ch => {
+        const logo = ch.logo || 'https://via.placeholder.com/300x200?text=Sports+Live';
         return `
-            <div class="media-card" onclick="window.openPlayer('sports', '${channel.url}', '${channel.name.replace(/'/g, "\\'")}')">
-                <div class="poster-wrapper">
-                    <img src="${logo}" alt="${channel.name}" class="poster" loading="lazy" style="object-fit: contain; padding: 10px; background: #111;">
-                    <div class="play-overlay">
-                        <i class="fa-solid fa-circle-play"></i>
-                    </div>
-                </div>
-                <div class="media-info">
-                    <div class="media-title">${channel.name}</div>
-                    <div class="media-meta">
-                        <span>Live Broadcast</span>
-                    </div>
-                </div>
+        <div class="media-card" onclick="openPlayer('sports','${ch.url}','${ch.name.replace(/'/g,"\\'")}')">
+            <div class="poster-wrapper">
+                <img src="${logo}" alt="${ch.name}" class="poster" loading="lazy" style="object-fit:contain;padding:10px;background:#111;">
+                <div class="play-overlay"><i class="fa-solid fa-circle-play"></i></div>
             </div>
-        `;
+            <div class="media-info">
+                <div class="media-title">${ch.name}</div>
+                <div class="media-meta"><span>Live Broadcast</span></div>
+            </div>
+        </div>`;
     }).join('');
+}
+
+// ── Event Listeners ───────────────────────────────────────
+function setupEventListeners() {
+    // Close player
+    closeModalBtn.addEventListener('click', closePlayer);
+
+    // Detail page back
+    document.getElementById('detail-back-btn').addEventListener('click', closeDetailPage);
+
+    // API key
+    addKeyBtn.addEventListener('click', () => { apiKeyModal.classList.add('active'); apiKeyInput.value = getApiKey() || ''; });
+    dismissNoticeBtn.addEventListener('click', () => apiNotice.classList.remove('show'));
+    closeKeyModalBtn.addEventListener('click', () => apiKeyModal.classList.remove('active'));
+    saveKeyBtn.addEventListener('click', async () => {
+        const key = apiKeyInput.value.trim();
+        if (key) { saveKeyBtn.disabled = true; saveKeyBtn.textContent = "Validating..."; await setApiKey(key); saveKeyBtn.disabled = false; saveKeyBtn.textContent = "Save Key"; }
+    });
+
+    // Browse modal
+    const browseBtn = document.getElementById('nav-browse-btn');
+    const browseModal = document.getElementById('browse-modal');
+    if (browseBtn) browseBtn.addEventListener('click', e => { e.preventDefault(); browseModal.classList.add('active'); });
+    document.getElementById('close-browse-modal').addEventListener('click', closeBrowse);
+    browseModal.addEventListener('click', e => { if (e.target === browseModal) closeBrowse(); });
+
+    // Scroll to sports
+    document.getElementById('nav-sports-btn')?.addEventListener('click', e => { e.preventDefault(); document.getElementById('sports-section').scrollIntoView({ behavior: 'smooth' }); });
+
+    // Mobile menu
+    document.getElementById('hamburger')?.addEventListener('click', () => document.getElementById('mobile-menu').classList.add('active'));
+    document.getElementById('close-mobile-menu')?.addEventListener('click', () => document.getElementById('mobile-menu').classList.remove('active'));
+    document.querySelectorAll('.mobile-menu-links a').forEach(a => a.addEventListener('click', () => document.getElementById('mobile-menu').classList.remove('active')));
+    document.getElementById('nav-sports-mobile')?.addEventListener('click', e => { e.preventDefault(); document.getElementById('mobile-menu').classList.remove('active'); document.getElementById('sports-section').scrollIntoView({ behavior: 'smooth' }); });
+    document.querySelector('.nav-key-mobile')?.addEventListener('click', e => { e.preventDefault(); document.getElementById('mobile-menu').classList.remove('active'); apiKeyModal.classList.add('active'); apiKeyInput.value = getApiKey() || ''; });
+    document.getElementById('nav-key-btn')?.addEventListener('click', e => { e.preventDefault(); apiKeyModal.classList.add('active'); apiKeyInput.value = getApiKey() || ''; });
+
+    // Mobile search
+    document.getElementById('mobile-search-toggle')?.addEventListener('click', () => { navbar.classList.toggle('search-active'); if (navbar.classList.contains('search-active')) searchInput.focus(); });
+
+    // Sports filters
+    document.getElementById('sports-filters')?.querySelectorAll('.filter-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('sports-filters').querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeSportsFilter = btn.dataset.filter;
+            renderSportsGrid();
+        });
+    });
+
+    // See All buttons
+    document.getElementById('see-all-movies')?.addEventListener('click', e => { e.preventDefault(); showCategory('movie'); });
+    document.getElementById('see-all-shows')?.addEventListener('click',  e => { e.preventDefault(); showCategory('tv');    });
+
+    // Search input live search
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        const q = searchInput.value.trim();
+        if (!q) { document.getElementById('search-dropdown').classList.remove('show-results'); return; }
+        searchTimeout = setTimeout(() => liveSearch(q), 300);
+    });
+    searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') runSearch(searchInput.value.trim()); });
+    searchInput.addEventListener('focus',    () => { if (searchInput.value.trim()) liveSearch(searchInput.value.trim()); else document.getElementById('search-dropdown').classList.add('show-results'); });
+    document.addEventListener('click', e => { if (!e.target.closest('#desktop-search')) closeSearchDropdown(); });
+
+    // Search filter dropdown
+    const filterBtn  = document.getElementById('search-filter-btn');
+    const filterMenu = document.getElementById('search-filter-menu');
+    const filterChev = document.getElementById('filter-chevron');
+    filterBtn.addEventListener('click', e => { e.stopPropagation(); filterMenu.classList.toggle('open'); filterChev.style.transform = filterMenu.classList.contains('open') ? 'rotate(180deg)' : ''; });
+    filterMenu.querySelectorAll('.filter-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            filterMenu.querySelectorAll('.filter-option').forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            searchFilter = opt.dataset.filter;
+            document.getElementById('filter-label').textContent = opt.textContent;
+            filterMenu.classList.remove('open');
+            filterChev.style.transform = '';
+            if (searchInput.value.trim()) liveSearch(searchInput.value.trim());
+        });
+    });
+
+    // Clear recent searches
+    document.getElementById('clear-recent-btn')?.addEventListener('click', () => { recentSearches = []; localStorage.removeItem('gm_recent_searches'); renderRecentSearches(); });
+
+    // Search close
+    document.getElementById('search-close-btn')?.addEventListener('click', () => { searchInput.value = ''; closeSearchDropdown(); });
+
+    // Close player modal on backdrop click
+    playerModal.addEventListener('click', e => { if (e.target === playerModal) closePlayer(); });
+
+    // Custom stream modal
+    const customStreamBtn = document.getElementById('custom-stream-btn');
+    const customStreamModal = document.getElementById('custom-stream-modal');
+    customStreamBtn?.addEventListener('click', () => customStreamModal.classList.add('active'));
+    document.getElementById('close-custom-modal')?.addEventListener('click', () => customStreamModal.classList.remove('active'));
+    document.getElementById('play-custom-btn')?.addEventListener('click', () => {
+        const title = document.getElementById('custom-stream-title').value.trim() || 'Custom Stream';
+        const url   = document.getElementById('custom-stream-url').value.trim();
+        if (!url) { alert('Enter a valid URL.'); return; }
+        customStreamModal.classList.remove('active');
+        openPlayer('sports', url, title);
+    });
+
+    const csInput = document.getElementById('custom-search-input');
+    const csResults = document.getElementById('custom-search-results');
+    csInput?.addEventListener('input', () => {
+        const q = csInput.value.trim().toLowerCase();
+        if (!q) { csResults.innerHTML = ''; return; }
+        const matches = sportsChannels.filter(ch => ch.name.toLowerCase().includes(q)).slice(0, 30);
+        csResults.innerHTML = matches.length
+            ? matches.map(ch => `<button style="text-align:left;width:100%;padding:0.5rem 1rem;font-size:0.85rem;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--glass-border);border-radius:8px;background:rgba(255,255,255,0.02);margin-bottom:0.3rem;color:white;cursor:pointer;" onclick="customStreamModal.classList.remove('active'); openPlayer('sports','${ch.url}','${ch.name.replace(/'/g,"\\'")}')"><span>${ch.name}</span><span style="font-size:0.75rem;opacity:0.6;"><i class='fa-solid fa-play'></i> Watch</span></button>`).join('')
+            : '<div style="color:var(--text-muted);padding:5px;font-size:0.85rem;">No channels found.</div>';
+    });
 }
