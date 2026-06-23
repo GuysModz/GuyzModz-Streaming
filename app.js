@@ -443,12 +443,10 @@ function closeDetailPage() {
 let currentModalRequestId = 0;
 
 window.openPlayer = function(type, id, title, season = 1, episode = 1) {
-    const requestId = ++currentModalRequestId;
-    currentMedia = { type, id, season, episode };
-    if (playerTitle) playerTitle.textContent = title || (type === 'movie' ? 'Movie' : 'TV Show');
-    playerModal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-    loadIframe();
+    const safeTitle = encodeURIComponent(title || (type === 'movie' ? 'Movie' : type === 'tv' ? 'TV Show' : 'Live Stream'));
+    const safeId = encodeURIComponent(id);
+    const url = `player.html?type=${encodeURIComponent(type)}&id=${safeId}&title=${safeTitle}&season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}`;
+    window.location.href = url;
 };
 
 function loadIframe() {

@@ -25,9 +25,16 @@ function getApiKey() {
 const urlParams = new URLSearchParams(window.location.search);
 const mediaType  = urlParams.get('type');
 const mediaId    = urlParams.get('id');
-const mediaTitle = urlParams.get('title') || (mediaType === 'movie' ? 'Movie' : 'TV Show');
+const mediaTitle = urlParams.get('title') || (mediaType === 'movie' ? 'Movie' : mediaType === 'sports' ? 'Live Stream' : 'TV Show');
+const urlSeason  = parseInt(urlParams.get('season') || '1', 10);
+const urlEpisode = parseInt(urlParams.get('episode') || '1', 10);
 
-let currentMedia = { type: mediaType, id: mediaId, season: 1, episode: 1 };
+let currentMedia = {
+    type: mediaType,
+    id: mediaId,
+    season: Number.isFinite(urlSeason) && urlSeason > 0 ? urlSeason : 1,
+    episode: Number.isFinite(urlEpisode) && urlEpisode > 0 ? urlEpisode : 1
+};
 let currentSource = 'vidsrc';
 let isPlaying = true; // cosmetic state
 let isMuted   = false;
@@ -82,9 +89,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         tvControls.classList.remove('hidden');
         await loadTVDetails(mediaId);
         if (seasonSel.options.length) {
-            currentMedia.season = parseInt(seasonSel.options[0].value);
+            const wantedSeason = String(currentMedia.season);
+            seasonSel.value = [...seasonSel.options].some(opt => opt.value === wantedSeason)
+                ? wantedSeason
+                : seasonSel.options[0].value;
+            currentMedia.season = parseInt(seasonSel.value, 10);
+
+            const selectedSeason = seasonSel.options[seasonSel.selectedIndex];
+            populateEpisodes(parseInt(selectedSeason?.dataset.episodeCount, 10) || 24);
+
+            const wantedEpisode = String(currentMedia.episode);
+            episodeSel.value = [...episodeSel.options].some(opt => opt.value === wantedEpisode)
+                ? wantedEpisode
+                : '1';
+            currentMedia.episode = parseInt(episodeSel.value, 10);
         }
-        currentMedia.episode = 1;
         updateSubtitle();
     }
 
