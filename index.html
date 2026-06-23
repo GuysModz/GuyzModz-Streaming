@@ -57,7 +57,7 @@
             <a href="#" onclick="showCategory('tv'); return false;">TV Shows</a>
             <a href="#" id="nav-browse-btn"><i class="fa-solid fa-compass"></i> Browse</a>
             <a href="#" id="nav-sports-btn">Live Sports</a>
-            <a href="#" id="nav-key-btn" title="API Settings"><i class="fa-solid fa-key"></i></a>
+            <!-- API key is hardcoded via env variable - key button hidden -->
         </div>
 
         <div class="mobile-actions">
@@ -339,7 +339,7 @@
             <a href="#" onclick="showCategory('movie')">Movies</a>
             <a href="#" onclick="showCategory('tv')">TV Shows</a>
             <a href="#" id="nav-sports-mobile">Live Sports</a>
-            <a href="#" class="nav-key-mobile"><i class="fa-solid fa-key"></i> API Settings</a>
+            <!-- API key button hidden - managed via Vercel env variable -->
         </div>
     </div>
 

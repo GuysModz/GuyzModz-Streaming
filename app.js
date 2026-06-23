@@ -1,13 +1,15 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
 
-// PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
-const DEFAULT_API_KEY = '';
+// API key is injected at build time from TMDB_API_KEY environment variable
+const DEFAULT_API_KEY = '%%TMDB_API_KEY%%';
 
 function getApiKey() {
+    // Use hardcoded key (set via Vercel env variable TMDB_API_KEY)
+    if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '%%TMDB_API_KEY%%') return DEFAULT_API_KEY;
+    // Fallback to localStorage for backwards compatibility
     const stored = localStorage.getItem('tmdb_api_key');
     if (stored) return stored;
-    if (DEFAULT_API_KEY && !DEFAULT_API_KEY.includes('PLACEHOLDER')) return DEFAULT_API_KEY;
     return null;
 }
 
@@ -86,11 +88,16 @@ async function setApiKey(key) {
 function checkApiKey() {
     const key = getApiKey();
     if (!key) {
-        setTimeout(() => apiNotice.classList.add('show'), 2000);
+        // Key is configured via environment variable - show demo content silently
         renderDemoContent();
     } else {
         loadContent();
     }
+    // Hide the key button from navbar since key is hardcoded
+    const keyBtn = document.getElementById('nav-key-btn');
+    if (keyBtn) keyBtn.style.display = 'none';
+    const apiNoticeEl = document.getElementById('api-notice');
+    if (apiNoticeEl) apiNoticeEl.style.display = 'none';
 }
 
 // ── TMDB Fetch ────────────────────────────────────────────
@@ -598,18 +605,25 @@ async function showCategory(type) {
     if (type === '4k') {
         const data = await fetchFromTMDB('/discover/movie?with_genres=28&sort_by=popularity.desc');
         if (data?.results) { currentMoviesList = data.results; renderMovies(); }
+        setTimeout(() => document.getElementById('movies-grid')?.closest('.content-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
         return;
     }
     if (type === 'anime') {
         const data = await fetchFromTMDB('/discover/tv?with_genres=16&sort_by=popularity.desc');
         if (data?.results) { currentShowsList = data.results; renderShows(); }
+        setTimeout(() => document.getElementById('shows-grid')?.closest('.content-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
         return;
     }
     const endpoint = type === 'movie' ? '/movie/popular' : '/tv/popular';
     const data = await fetchFromTMDB(endpoint);
     if (type === 'movie' && data?.results) { currentMoviesList = data.results; renderMovies(); }
     if (type === 'tv'    && data?.results) { currentShowsList  = data.results; renderShows(); }
-    document.getElementById('movies-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => {
+        const target = type === 'movie'
+            ? document.getElementById('movies-grid')?.closest('.content-section')
+            : document.getElementById('shows-grid')?.closest('.content-section');
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
 }
 
 // ── Reset Home ────────────────────────────────────────────

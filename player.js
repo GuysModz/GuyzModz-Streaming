@@ -1,107 +1,118 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
 
-// Get params from URL
-const urlParams = new URLSearchParams(window.location.search);
-const type = urlParams.get('type');
-const id = urlParams.get('id');
-const title = urlParams.get('title');
-
-const playerTitle = document.getElementById('page-player-title');
-const iframeContainer = document.getElementById('page-iframe-container');
-const tvControls = document.getElementById('page-tv-controls');
-const seasonSelect = document.getElementById('page-season-select');
-const episodeSelect = document.getElementById('page-episode-select');
-
-let currentMedia = {
-    type: type,
-    id: id,
-    season: 1,
-    episode: 1
-};
+// API key injected at build time from TMDB_API_KEY env variable
+const DEFAULT_API_KEY = '%%TMDB_API_KEY%%';
 
 function getApiKey() {
-    const stored = localStorage.getItem('tmdb_api_key');
-    const DEFAULT_API_KEY = '%%TMDB_KEY_PLACEHOLDER%%';
-    if (stored) return stored;
-    if (DEFAULT_API_KEY && !DEFAULT_API_KEY.includes('PLACEHOLDER')) return DEFAULT_API_KEY;
-    return null;
+    if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '%%TMDB_API_KEY%%') return DEFAULT_API_KEY;
+    return localStorage.getItem('tmdb_api_key') || null;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // Redirect back to home if no ID is present
-    if (!id) {
-        window.location.href = 'index.html';
-        return;
-    }
+// Get URL params
+const urlParams = new URLSearchParams(window.location.search);
+const type  = urlParams.get('type');
+const id    = urlParams.get('id');
+const title = urlParams.get('title');
 
-    if (playerTitle) {
-        playerTitle.textContent = title || (type === 'movie' ? 'Watching Movie' : 'Watching TV Show');
-    }
+let currentMedia = { type, id, season: 1, episode: 1 };
+
+// DOM refs
+const fullscreenPlayer = document.getElementById('fullscreen-player');
+const playerOverlay    = document.getElementById('player-overlay');
+const overlayTitle     = document.getElementById('overlay-title');
+const overlaySubtitle  = document.getElementById('overlay-subtitle');
+const overlayBottom    = document.getElementById('overlay-bottom');
+const seasonSelect     = document.getElementById('season-select');
+const episodeSelect    = document.getElementById('episode-select');
+const loadingScreen    = document.getElementById('loading-screen');
+
+// ─── Auto-hide overlay logic ───────────────────────────────
+let hideTimer = null;
+
+function showOverlay() {
+    playerOverlay.classList.remove('hidden');
+    document.body.classList.remove('hide-cursor');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideOverlay, 3000);
+}
+
+function hideOverlay() {
+    playerOverlay.classList.add('hidden');
+    document.body.classList.add('hide-cursor');
+}
+
+document.addEventListener('mousemove', showOverlay);
+document.addEventListener('touchstart', showOverlay);
+document.addEventListener('keydown', showOverlay);
+
+// Show overlay on load, then hide after 4s
+setTimeout(hideOverlay, 4000);
+
+// ─── Init ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!id) { window.location.href = 'index.html'; return; }
+
+    overlayTitle.textContent = title || (type === 'movie' ? 'Movie' : 'TV Show');
 
     if (type === 'tv') {
-        tvControls.classList.remove('hidden');
+        overlayBottom.classList.remove('hidden-controls');
         await loadTVDetails(id);
-        
         if (seasonSelect.options.length > 0) {
             currentMedia.season = seasonSelect.options[0].value;
-            seasonSelect.value = currentMedia.season;
         }
-    } else {
-        currentMedia.season = 1;
     }
 
-    if (episodeSelect && episodeSelect.options.length > 0) {
-        episodeSelect.value = "1";
+    if (episodeSelect.options.length > 0) {
+        episodeSelect.value = '1';
     }
 
     loadIframe();
 
-    // Event listeners for TV controls
-    if (seasonSelect) {
-        seasonSelect.addEventListener('change', () => {
-            const selectedOption = seasonSelect.options[seasonSelect.selectedIndex];
-            const episodeCount = selectedOption ? (selectedOption.dataset.episodeCount || 24) : 24;
-            populateEpisodeSelect(episodeCount);
-            
-            // Auto play season change
-            currentMedia.season = seasonSelect.value;
-            currentMedia.episode = episodeSelect.value;
-            loadIframe();
-        });
-    }
+    // Hide loading after short delay
+    setTimeout(() => loadingScreen.classList.add('hidden'), 800);
 
-    if (episodeSelect) {
-        episodeSelect.addEventListener('change', () => {
-            currentMedia.season = seasonSelect.value;
-            currentMedia.episode = episodeSelect.value;
-            loadIframe();
-        });
-    }
+    // Season/episode listeners
+    seasonSelect.addEventListener('change', () => {
+        const opt = seasonSelect.options[seasonSelect.selectedIndex];
+        const epCount = opt?.dataset.episodeCount || 24;
+        populateEpisodeSelect(epCount);
+        currentMedia.season  = seasonSelect.value;
+        currentMedia.episode = 1;
+        episodeSelect.value  = '1';
+        updateSubtitle();
+        loadIframe();
+    });
+
+    episodeSelect.addEventListener('change', () => {
+        currentMedia.season  = seasonSelect.value;
+        currentMedia.episode = episodeSelect.value;
+        updateSubtitle();
+        loadIframe();
+    });
 });
 
+function updateSubtitle() {
+    if (type === 'tv') {
+        overlaySubtitle.textContent = `Season ${currentMedia.season}  ·  Episode ${currentMedia.episode}`;
+    }
+}
+
+// ─── Load iframe ──────────────────────────────────────────
 function loadIframe() {
     if (currentMedia.type === 'sports') {
-        iframeContainer.innerHTML = `
-            <video id="live-player" controls autoplay style="width: 100%; height: 100%; background: #000; border-radius: 12px;"></video>
+        fullscreenPlayer.innerHTML = `
+            <video id="live-player" controls autoplay style="width:100%;height:100%;background:#000;"></video>
         `;
-        
         const video = document.getElementById('live-player');
-        const streamUrl = currentMedia.id;
-
         if (Hls.isSupported()) {
             const hls = new Hls();
-            hls.loadSource(streamUrl);
+            hls.loadSource(currentMedia.id);
             hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
-            });
-            window.activeHlsInstance = hls;
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = streamUrl;
-            video.addEventListener('loadedmetadata', () => {
-                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
-            });
+            video.src = currentMedia.id;
+            video.addEventListener('loadedmetadata', () => video.play().catch(() => {}));
         }
     } else {
         let embedUrl = '';
@@ -110,67 +121,54 @@ function loadIframe() {
         } else {
             embedUrl = `${VIDKING_BASE_URL}/tv/${currentMedia.id}/${currentMedia.season}/${currentMedia.episode}`;
         }
-
-        iframeContainer.innerHTML = `
-            <iframe 
-                src="${embedUrl}" 
-                width="100%" 
-                height="100%" 
-                frameborder="0" 
-                allowfullscreen>
-            </iframe>
+        fullscreenPlayer.innerHTML = `
+            <iframe src="${embedUrl}" width="100%" height="100%" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; fullscreen"></iframe>
         `;
     }
+    updateSubtitle();
 }
 
+// ─── TMDB helpers ─────────────────────────────────────────
 async function fetchFromTMDB(endpoint) {
     const key = getApiKey();
     if (!key) return null;
     try {
-        const separator = endpoint.includes('?') ? '&' : '?';
-        const url = `${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`TMDB Error: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error(error);
-        return null;
-    }
+        const sep = endpoint.includes('?') ? '&' : '?';
+        const res = await fetch(`${TMDB_BASE_URL}${endpoint}${sep}api_key=${key}&language=en-US`);
+        if (!res.ok) throw new Error(`TMDB ${res.status}`);
+        return await res.json();
+    } catch (e) { console.error(e); return null; }
 }
 
-async function loadTVDetails(id) {
-    const tvData = await fetchFromTMDB(`/tv/${id}`);
-    if (tvData && tvData.seasons) {
-        const regularSeasons = tvData.seasons.filter(s => s.season_number > 0);
-        populateSeasonSelect(regularSeasons.length > 0 ? regularSeasons : tvData.seasons, true);
+async function loadTVDetails(tvId) {
+    const tvData = await fetchFromTMDB(`/tv/${tvId}`);
+    if (tvData?.seasons) {
+        const seasons = tvData.seasons.filter(s => s.season_number > 0);
+        populateSeasonSelect(seasons.length ? seasons : tvData.seasons, true);
     } else {
         populateSeasonSelect(5);
     }
 }
 
-function populateSeasonSelect(seasonsData, isDataArray = false) {
+function populateSeasonSelect(data, isArray = false) {
     seasonSelect.innerHTML = '';
-    if (isDataArray) {
-        seasonsData.forEach(s => {
-            const option = document.createElement('option');
-            option.value = s.season_number;
-            option.textContent = s.name || `Season ${s.season_number}`;
-            option.dataset.episodeCount = s.episode_count;
-            seasonSelect.appendChild(option);
+    if (isArray) {
+        data.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.season_number;
+            opt.textContent = s.name || `Season ${s.season_number}`;
+            opt.dataset.episodeCount = s.episode_count;
+            seasonSelect.appendChild(opt);
         });
-        if (seasonsData.length > 0) {
-            populateEpisodeSelect(seasonsData[0].episode_count);
-        } else {
-            populateEpisodeSelect(24);
-        }
+        populateEpisodeSelect(data[0]?.episode_count || 24);
     } else {
-        const count = typeof seasonsData === 'number' ? seasonsData : 5;
+        const count = typeof data === 'number' ? data : 5;
         for (let i = 1; i <= count; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = `Season ${i}`;
-            option.dataset.episodeCount = 24;
-            seasonSelect.appendChild(option);
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = `Season ${i}`;
+            opt.dataset.episodeCount = 24;
+            seasonSelect.appendChild(opt);
         }
         populateEpisodeSelect(24);
     }
@@ -178,11 +176,11 @@ function populateSeasonSelect(seasonsData, isDataArray = false) {
 
 function populateEpisodeSelect(count = 24) {
     episodeSelect.innerHTML = '';
-    const maxEpisodes = parseInt(count) || 24;
-    for (let i = 1; i <= maxEpisodes; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = `Episode ${i}`;
-        episodeSelect.appendChild(option);
+    const max = parseInt(count) || 24;
+    for (let i = 1; i <= max; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `Episode ${i}`;
+        episodeSelect.appendChild(opt);
     }
 }
