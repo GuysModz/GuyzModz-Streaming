@@ -8,7 +8,7 @@ const dist = path.join(root, 'dist');
 if (fs.existsSync(dist)) fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
 
-const apiKey = process.env.TMDB_API_KEY || process.env.TMDB_KEY || '';
+const apiKey = String(process.env.TMDB_API_KEY || process.env.TMDB_KEY || '').trim().replace(/^Bearer\s+/i, '').replace(/^['\"]|['\"]$/g, '').trim();
 
 if (!apiKey) {
   console.warn('⚠️  TMDB_API_KEY/TMDB_KEY env variable is not set — TMDB live content/search may not load.');

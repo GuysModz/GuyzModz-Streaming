@@ -2,15 +2,24 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
 
 // API key is injected at build time from TMDB_API_KEY environment variable
-const DEFAULT_API_KEY = '%%TMDB_API_KEY%%';
+const DEFAULT_API_KEY = 'b80a71388447e647e1ff09bd1fd41a4f';
+
+function normalizeApiKey(key) {
+    if (!key) return null;
+    return String(key)
+        .trim()
+        .replace(/^Bearer\s+/i, '')
+        .replace(/^['\"]|['\"]$/g, '')
+        .trim();
+}
 
 function getApiKey() {
     // Use the key injected by Vercel at build time
-    if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '%%TMDB_API_KEY%%') return DEFAULT_API_KEY;
+    const injected = normalizeApiKey(DEFAULT_API_KEY);
+    if (injected && injected !== '%%TMDB_API_KEY%%') return injected;
+
     // Fallback to localStorage for backwards compatibility
-    const stored = localStorage.getItem('tmdb_api_key');
-    if (stored) return stored;
-    return null;
+    return normalizeApiKey(localStorage.getItem('tmdb_api_key'));
 }
 
 // ── DOM refs ──────────────────────────────────────────────
@@ -104,16 +113,25 @@ function checkApiKey() {
 async function fetchFromTMDB(endpoint) {
     const key = getApiKey();
     if (!key) return null;
+
+    const sep = endpoint.includes('?') ? '&' : '?';
+    const isV4Token = key.startsWith('eyJ');
+    const url = isV4Token
+        ? `${TMDB_BASE_URL}${endpoint}${sep}language=en-US`
+        : `${TMDB_BASE_URL}${endpoint}${sep}api_key=${encodeURIComponent(key)}&language=en-US`;
+
     try {
-        const sep = endpoint.includes('?') ? '&' : '?';
-        const isV4Token = key.startsWith('eyJ');
-        const url = isV4Token
-            ? `${TMDB_BASE_URL}${endpoint}${sep}language=en-US`
-            : `${TMDB_BASE_URL}${endpoint}${sep}api_key=${key}&language=en-US`;
         const res = await fetch(url, isV4Token ? { headers: { Authorization: `Bearer ${key}` } } : undefined);
-        if (!res.ok) throw new Error(`TMDB Error: ${res.status}`);
+        if (!res.ok) {
+            const body = await res.text().catch(() => '');
+            console.error(`TMDB Error ${res.status} for ${endpoint}:`, body || res.statusText);
+            return null;
+        }
         return await res.json();
-    } catch (e) { console.error(e); return null; }
+    } catch (e) {
+        console.error('TMDB fetch failed:', e);
+        return null;
+    }
 }
 
 // ── Content Loading ───────────────────────────────────────
