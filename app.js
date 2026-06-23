@@ -553,7 +553,16 @@ async function runSearch(query) {
     const homeSections = document.getElementById('home-sections');
     const sportsSection = document.getElementById('sports-section');
 
-    if (!key) { alert("Please add your TMDB API key to use full search."); apiKeyModal.classList.add('active'); return; }
+    if (!key) {
+        // No API key available in this build. Do a local/demo search instead of showing a blocking popup.
+        const q = query.toLowerCase();
+        currentMoviesList = demoMovies.filter(m => (m.title || '').toLowerCase().includes(q));
+        currentShowsList = demoShows.filter(s => (s.name || '').toLowerCase().includes(q));
+        renderMovies();
+        renderShows();
+        moviesGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
 
     const moviesSearch = await fetchFromTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
     if (moviesSearch?.results) {
