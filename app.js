@@ -106,7 +106,11 @@ async function fetchFromTMDB(endpoint) {
     if (!key) return null;
     try {
         const sep = endpoint.includes('?') ? '&' : '?';
-        const res = await fetch(`${TMDB_BASE_URL}${endpoint}${sep}api_key=${key}&language=en-US`);
+        const isV4Token = key.startsWith('eyJ');
+        const url = isV4Token
+            ? `${TMDB_BASE_URL}${endpoint}${sep}language=en-US`
+            : `${TMDB_BASE_URL}${endpoint}${sep}api_key=${key}&language=en-US`;
+        const res = await fetch(url, isV4Token ? { headers: { Authorization: `Bearer ${key}` } } : undefined);
         if (!res.ok) throw new Error(`TMDB Error: ${res.status}`);
         return await res.json();
     } catch (e) { console.error(e); return null; }
@@ -523,7 +527,7 @@ async function liveSearch(query) {
     else if (searchFilter === 'tv' || searchFilter === 'anime') endpoint = '/search/tv';
 
     const data = await fetchFromTMDB(`${endpoint}?query=${encodeURIComponent(query)}`);
-    const results = (data?.results || []).filter(r => r.poster_path && (r.media_type !== 'person')).slice(0, 8);
+    const results = (data?.results || []).filter(r => (r.media_type !== 'person') && (r.title || r.name)).slice(0, 8);
     resultsList.innerHTML = results.length ? results.map(item => searchResultCard(item)).join('') : '<div class="no-results-small">No results found.</div>';
 }
 
@@ -566,12 +570,12 @@ async function runSearch(query) {
 
     const moviesSearch = await fetchFromTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
     if (moviesSearch?.results) {
-        currentMoviesList = moviesSearch.results.filter(m => m.poster_path);
+        currentMoviesList = moviesSearch.results.filter(m => m.title);
         renderMovies();
     }
     const showsSearch = await fetchFromTMDB(`/search/tv?query=${encodeURIComponent(query)}`);
     if (showsSearch?.results) {
-        currentShowsList = showsSearch.results.filter(s => s.poster_path);
+        currentShowsList = showsSearch.results.filter(s => s.name);
         renderShows();
     }
     moviesGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
