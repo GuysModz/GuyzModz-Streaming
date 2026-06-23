@@ -179,7 +179,8 @@ function loadIframe() {
             frameborder="0"
             allowfullscreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            referrerpolicy="no-referrer-when-downgrade"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+            referrerpolicy="no-referrer"
         ></iframe>
     `;
 }
@@ -238,19 +239,13 @@ function toggleMute() {
     updateVolIcon(isMuted ? 0 : 100);
 }
 
-// Play/pause button — cosmetic (forwards a click to the iframe center)
+// Play/pause button — overlay only.
+// IMPORTANT: Do NOT forward clicks into the iframe.
+// Third-party embed providers often use the first iframe clicks to open ads/popups.
+// Keeping this button cosmetic prevents extra ad triggers from our custom controls.
 playBtn.addEventListener('click', () => {
     isPlaying = !isPlaying;
     playIcon.className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
-    // Try to click inside iframe at center (works on same-origin only, otherwise no-op)
-    try {
-        const iframe = videoWrap.querySelector('iframe');
-        if (iframe) {
-            const r = iframe.getBoundingClientRect();
-            const ev = new MouseEvent('click', { bubbles: true, clientX: r.left + r.width/2, clientY: r.top + r.height/2 });
-            iframe.dispatchEvent(ev);
-        }
-    } catch(e) {}
 });
 
 // Fullscreen

@@ -95,7 +95,8 @@
                 rgba(0,0,0,0.88) 0%,
                 rgba(0,0,0,0.4) 60%,
                 transparent 100%);
-            display: flex; align-items: center; gap: 1.4rem;
+            display: flex; align-items: center; gap: 1rem;
+            flex-wrap: wrap;
             pointer-events: all;
         }
 
@@ -153,13 +154,7 @@
 
         /* ── BOTTOM BAR ────────────────────────────────── */
         #bar-bottom {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            padding: 3rem 2rem 1.6rem;
-            background: linear-gradient(to top,
-                rgba(0,0,0,0.92) 0%,
-                rgba(0,0,0,0.5) 55%,
-                transparent 100%);
-            pointer-events: all;
+            display: none; /* Disabled so it does not sit on top of the embed player's real controls. */
         }
 
         /* Fake progress bar (cosmetic) */
@@ -251,9 +246,13 @@
 
         /* TV controls (season/episode) */
         #tv-controls {
-            margin-top: 1rem;
-            display: flex; align-items: center; gap: 1rem;
+            display: flex; align-items: center; gap: 0.5rem;
             flex-wrap: wrap;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.3rem;
+            backdrop-filter: blur(12px);
         }
         #tv-controls.hidden { display: none; }
 
@@ -315,6 +314,14 @@
             <button class="src-pill" data-src="vidsrc2" onclick="switchSource('vidsrc2')">Source 2</button>
             <button class="src-pill" data-src="vidking" onclick="switchSource('vidking')">Source 3</button>
         </div>
+
+        <!-- TV: season/episode dropdowns moved to top so bottom embed controls stay clickable -->
+        <div id="tv-controls" class="hidden">
+            <span class="ctrl-label">S</span>
+            <select class="ctrl-select" id="season-select"></select>
+            <span class="ctrl-label">E</span>
+            <select class="ctrl-select" id="episode-select"></select>
+        </div>
     </div>
 
     <!-- Bottom bar -->
@@ -326,7 +333,7 @@
 
         <!-- Controls -->
         <div id="controls-row">
-            <!-- Play/pause (cosmetic — forwards click to iframe area) -->
+            <!-- Custom controls disabled; embed player controls are used instead. -->
             <button class="ctrl-btn primary" id="play-btn" title="Play / Pause">
                 <i class="fa-solid fa-play" id="play-icon"></i>
             </button>
@@ -345,14 +352,6 @@
             <div id="time-display">0:00 / —:——</div>
 
             <div class="ctrl-sep"></div>
-
-            <!-- TV: season/episode dropdowns inline -->
-            <div id="tv-controls" class="hidden">
-                <span class="ctrl-label">S</span>
-                <select class="ctrl-select" id="season-select"></select>
-                <span class="ctrl-label">E</span>
-                <select class="ctrl-select" id="episode-select"></select>
-            </div>
 
             <button class="ctrl-btn" id="fs-btn" title="Fullscreen" onclick="toggleFullscreen()">
                 <i class="fa-solid fa-expand"></i>
