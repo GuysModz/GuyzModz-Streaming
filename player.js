@@ -1,307 +1,336 @@
-// ── Config ──────────────────────────────────────────────────
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player — GuyzModz</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-// Single working embed source
-function getEmbedUrl(type, id, season, episode) {
-    return type === 'movie'
-        ? `https://www.vidking.net/embed/movie/${id}`
-        : `https://www.vidking.net/embed/tv/${id}/${season}/${episode}`;
-}
-
-// API key injected at build time from TMDB_API_KEY env variable
-const DEFAULT_API_KEY = '%%TMDB_API_KEY%%';
-function getApiKey() {
-    if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '%%TMDB_API_KEY%%') return DEFAULT_API_KEY;
-    return localStorage.getItem('tmdb_api_key') || null;
-}
-
-// ── URL params ──────────────────────────────────────────────
-const urlParams = new URLSearchParams(window.location.search);
-const mediaType  = urlParams.get('type');
-const mediaId    = urlParams.get('id');
-const mediaTitle = urlParams.get('title') || (mediaType === 'movie' ? 'Movie' : mediaType === 'sports' ? 'Live Stream' : 'TV Show');
-const urlSeason  = parseInt(urlParams.get('season') || '1', 10);
-const urlEpisode = parseInt(urlParams.get('episode') || '1', 10);
-
-let currentMedia = {
-    type: mediaType,
-    id: mediaId,
-    season: Number.isFinite(urlSeason) && urlSeason > 0 ? urlSeason : 1,
-    episode: Number.isFinite(urlEpisode) && urlEpisode > 0 ? urlEpisode : 1
-};
-let isPlaying = true; // cosmetic state
-let isMuted   = false;
-let fakeTime  = 0;
-let fakeDuration = 0;
-let fakeTimer = null;
-
-// ── DOM refs ─────────────────────────────────────────────────
-const videoWrap    = document.getElementById('video-wrap');
-const overlay      = document.getElementById('overlay');
-const loadScreen   = document.getElementById('loading-screen');
-const loadTitle    = document.getElementById('load-title');
-const titleMain    = document.getElementById('title-main');
-const titleSub     = document.getElementById('title-sub');
-const tvControls   = document.getElementById('tv-controls');
-const seasonSel    = document.getElementById('season-select');
-const episodeSel   = document.getElementById('episode-select');
-const playBtn      = document.getElementById('play-btn');
-const playIcon     = document.getElementById('play-icon');
-const volIcon      = document.getElementById('vol-icon');
-const volSlider    = document.getElementById('vol-slider');
-const timeDisplay  = document.getElementById('time-display');
-const progressFill = document.getElementById('fake-progress-fill');
-const fakeProgress = document.getElementById('fake-progress');
-
-// ── Auto-hide overlay ────────────────────────────────────────
-let hideTimer = null;
-
-function showOverlay() {
-    overlay.classList.remove('hidden');
-    document.body.classList.remove('hide-cursor');
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(hideOverlay, 3500);
-}
-function hideOverlay() {
-    overlay.classList.add('hidden');
-    document.body.classList.add('hide-cursor');
-}
-
-document.addEventListener('mousemove',  showOverlay);
-document.addEventListener('touchstart', showOverlay, { passive: true });
-document.addEventListener('keydown',    showOverlay);
-
-// ── Init ─────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-    if (!mediaId) { window.location.href = 'index.html'; return; }
-
-    loadTitle.textContent = mediaTitle;
-    titleMain.textContent = mediaTitle;
-
-    if (mediaType === 'tv') {
-        tvControls.classList.remove('hidden');
-        await loadTVDetails(mediaId);
-        if (seasonSel.options.length) {
-            const wantedSeason = String(currentMedia.season);
-            seasonSel.value = [...seasonSel.options].some(opt => opt.value === wantedSeason)
-                ? wantedSeason
-                : seasonSel.options[0].value;
-            currentMedia.season = parseInt(seasonSel.value, 10);
-
-            const selectedSeason = seasonSel.options[seasonSel.selectedIndex];
-            populateEpisodes(parseInt(selectedSeason?.dataset.episodeCount, 10) || 24);
-
-            const wantedEpisode = String(currentMedia.episode);
-            episodeSel.value = [...episodeSel.options].some(opt => opt.value === wantedEpisode)
-                ? wantedEpisode
-                : '1';
-            currentMedia.episode = parseInt(episodeSel.value, 10);
+        :root {
+            --accent: #e11d28;
+            --accent-bright: #ff2d3a;
+            --accent-glow: rgba(225, 29, 40, 0.45);
+            --dark: #050508;
+            --surface: rgba(8,8,14,0.96);
+            --border: rgba(255,255,255,0.07);
+            --text: #f0f0f5;
+            --muted: rgba(240,240,245,0.42);
+            --ease: cubic-bezier(0.4,0,0.2,1);
         }
-        updateSubtitle();
-    }
 
-    loadIframe();
-    startFakeProgress();
-
-    // Dismiss loading after bar fills
-    setTimeout(() => loadScreen.classList.add('out'), 1300);
-    // Auto-hide overlay after 4s
-    setTimeout(hideOverlay, 4000);
-
-    // Season / episode
-    seasonSel.addEventListener('change', () => {
-        const opt = seasonSel.options[seasonSel.selectedIndex];
-        populateEpisodes(parseInt(opt?.dataset.episodeCount) || 24);
-        currentMedia.season  = parseInt(seasonSel.value);
-        currentMedia.episode = 1;
-        episodeSel.value = '1';
-        updateSubtitle();
-        loadIframe();
-        resetFakeProgress();
-    });
-    episodeSel.addEventListener('change', () => {
-        currentMedia.season  = parseInt(seasonSel.value);
-        currentMedia.episode = parseInt(episodeSel.value);
-        updateSubtitle();
-        loadIframe();
-        resetFakeProgress();
-    });
-
-    // Volume slider (cosmetic)
-    volSlider.addEventListener('input', () => {
-        const v = parseInt(volSlider.value);
-        isMuted = v === 0;
-        updateVolIcon(v);
-    });
-
-    // Fake progress click to seek (cosmetic)
-    fakeProgress.addEventListener('click', (e) => {
-        const rect = fakeProgress.getBoundingClientRect();
-        const pct  = (e.clientX - rect.left) / rect.width;
-        if (fakeDuration > 0) {
-            fakeTime = pct * fakeDuration;
-            updateTimeDisplay();
-            progressFill.style.width = (pct * 100) + '%';
+        html, body {
+            width: 100%; height: 100%;
+            background: #000;
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            user-select: none;
         }
-    });
-});
 
-// ── Iframe loader ─────────────────────────────────────────────
-function loadIframe() {
-    if (currentMedia.type === 'sports') {
-        videoWrap.innerHTML = `<video id="live-video" autoplay controls style="width:100%;height:100%;background:#000;"></video>`;
-        const vid = document.getElementById('live-video');
-        if (Hls.isSupported()) {
-            const hls = new Hls();
-            hls.loadSource(currentMedia.id);
-            hls.attachMedia(vid);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => vid.play().catch(() => {}));
-        } else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
-            vid.src = currentMedia.id;
+        /* ── Loading cinematic screen ──────────────────── */
+        #loading-screen {
+            position: fixed; inset: 0; z-index: 100;
+            background: var(--dark);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 1.5rem;
+            transition: opacity 0.6s var(--ease);
         }
-        return;
-    }
+        #loading-screen.out { opacity: 0; pointer-events: none; }
 
-    const url = getEmbedUrl(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
-    videoWrap.innerHTML = `
-        <iframe
-            src="${url}"
-            width="100%" height="100%"
-            frameborder="0"
-            allowfullscreen
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            referrerpolicy="no-referrer"
-        ></iframe>
-    `;
-}
-
-function reloadPlayer() {
-    loadIframe();
-    resetFakeProgress();
-}
-
-// ── Fake cosmetic controls ────────────────────────────────────
-function startFakeProgress() {
-    // Randomize a fake duration (between 85 and 150 min for movies, 40-60 for TV)
-    fakeDuration = (currentMedia.type === 'movie' ? (85 + Math.random() * 65) : (40 + Math.random() * 20)) * 60;
-    fakeTime = 0;
-    clearInterval(fakeTimer);
-    fakeTimer = setInterval(() => {
-        if (!isPlaying) return;
-        fakeTime++;
-        updateTimeDisplay();
-        if (fakeDuration > 0) {
-            progressFill.style.width = Math.min((fakeTime / fakeDuration) * 100, 100) + '%';
+        .loader-logo {
+            font-size: 1rem; font-weight: 800; letter-spacing: 0.25em;
+            text-transform: uppercase; color: var(--muted);
         }
-    }, 1000);
-}
+        .loader-logo span { color: var(--accent); }
 
-function resetFakeProgress() {
-    fakeTime = 0;
-    progressFill.style.width = '0%';
-    clearInterval(fakeTimer);
-    setTimeout(startFakeProgress, 800);
-}
-
-function updateTimeDisplay() {
-    const fmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-    timeDisplay.textContent = `${fmt(fakeTime)} / ${fakeDuration > 0 ? fmt(fakeDuration) : '--:--'}`;
-}
-
-function updateVolIcon(val) {
-    if (val === 0)       volIcon.className = 'fa-solid fa-volume-xmark';
-    else if (val < 50)   volIcon.className = 'fa-solid fa-volume-low';
-    else                 volIcon.className = 'fa-solid fa-volume-high';
-}
-
-function toggleMute() {
-    isMuted = !isMuted;
-    volSlider.value = isMuted ? 0 : 100;
-    updateVolIcon(isMuted ? 0 : 100);
-}
-
-// Play/pause button — overlay only.
-// IMPORTANT: Do NOT forward clicks into the iframe.
-// Third-party embed providers often use the first iframe clicks to open ads/popups.
-// Keeping this button cosmetic prevents extra ad triggers from our custom controls.
-playBtn.addEventListener('click', () => {
-    isPlaying = !isPlaying;
-    playIcon.className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
-});
-
-// Fullscreen
-function toggleFullscreen() {
-    const fsIcon = document.querySelector('#fs-btn i');
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-        if (fsIcon) fsIcon.className = 'fa-solid fa-compress';
-    } else {
-        document.exitFullscreen();
-        if (fsIcon) fsIcon.className = 'fa-solid fa-expand';
-    }
-}
-document.addEventListener('fullscreenchange', () => {
-    const fsIcon = document.querySelector('#fs-btn i');
-    if (fsIcon) fsIcon.className = document.fullscreenElement ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
-});
-
-// ── Subtitle helper ───────────────────────────────────────────
-function updateSubtitle() {
-    if (currentMedia.type === 'tv') {
-        titleSub.textContent = `Season ${currentMedia.season}  ·  Episode ${currentMedia.episode}`;
-    }
-}
-
-// ── TMDB helpers ──────────────────────────────────────────────
-async function fetchFromTMDB(endpoint) {
-    const key = getApiKey();
-    if (!key) return null;
-    try {
-        const sep = endpoint.includes('?') ? '&' : '?';
-        const res = await fetch(`${TMDB_BASE_URL}${endpoint}${sep}api_key=${key}&language=en-US`);
-        if (!res.ok) throw new Error(`TMDB ${res.status}`);
-        return await res.json();
-    } catch (e) { console.error(e); return null; }
-}
-
-async function loadTVDetails(tvId) {
-    const tvData = await fetchFromTMDB(`/tv/${tvId}`);
-    if (tvData?.seasons) {
-        const seasons = tvData.seasons.filter(s => s.season_number > 0);
-        populateSeasons(seasons.length ? seasons : tvData.seasons, true);
-    } else {
-        populateSeasons(5, false);
-    }
-}
-
-function populateSeasons(data, isArray) {
-    seasonSel.innerHTML = '';
-    if (isArray) {
-        data.forEach(s => {
-            const o = document.createElement('option');
-            o.value = s.season_number;
-            o.textContent = s.name || `Season ${s.season_number}`;
-            o.dataset.episodeCount = s.episode_count;
-            seasonSel.appendChild(o);
-        });
-        populateEpisodes(parseInt(data[0]?.episode_count) || 24);
-    } else {
-        const n = typeof data === 'number' ? data : 5;
-        for (let i = 1; i <= n; i++) {
-            const o = document.createElement('option');
-            o.value = i; o.textContent = `Season ${i}`; o.dataset.episodeCount = 24;
-            seasonSel.appendChild(o);
+        .loader-title {
+            font-size: 2rem; font-weight: 700;
+            text-align: center; max-width: 600px;
+            line-height: 1.2;
         }
-        populateEpisodes(24);
-    }
-}
 
-function populateEpisodes(count = 24) {
-    episodeSel.innerHTML = '';
-    const max = parseInt(count) || 24;
-    for (let i = 1; i <= max; i++) {
-        const o = document.createElement('option');
-        o.value = i; o.textContent = `Ep ${i}`;
-        episodeSel.appendChild(o);
-    }
-}
+        .loader-bar-wrap {
+            width: 200px; height: 2px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px; overflow: hidden;
+        }
+        .loader-bar {
+            height: 100%; width: 0%;
+            background: var(--accent);
+            border-radius: 2px;
+            animation: loadBar 1.2s var(--ease) forwards;
+        }
+        @keyframes loadBar { to { width: 100%; } }
+
+        /* ── Full viewport iframe ──────────────────────── */
+        #video-wrap {
+            position: fixed; inset: 0; z-index: 1;
+            background: #000;
+        }
+        #video-wrap iframe,
+        #video-wrap video {
+            width: 100%; height: 100%;
+            border: none; display: block;
+        }
+
+        /* ── Overlay (auto-hide) ───────────────────────── */
+        #overlay {
+            position: fixed; inset: 0; z-index: 10;
+            pointer-events: none;
+            transition: opacity 0.5s var(--ease);
+        }
+        #overlay.hidden { opacity: 0; }
+        body.hide-cursor { cursor: none; }
+
+        /* ── TOP BAR ───────────────────────────────────── */
+        #bar-top {
+            position: absolute; top: 0; left: 0; right: 0;
+            padding: 1.4rem 2rem 3rem;
+            background: linear-gradient(to bottom,
+                rgba(0,0,0,0.88) 0%,
+                rgba(0,0,0,0.4) 60%,
+                transparent 100%);
+            display: flex; align-items: center; gap: 1rem;
+            flex-wrap: wrap;
+            pointer-events: all;
+        }
+
+        #back-btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 1.1rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: #fff; font-size: 0.875rem; font-weight: 600;
+            text-decoration: none; cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            backdrop-filter: blur(8px);
+        }
+        #back-btn:hover {
+            background: rgba(255,255,255,0.16);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        #title-block { flex: 1; min-width: 0; }
+        #title-main {
+            font-size: 1.25rem; font-weight: 700;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.9);
+        }
+        #title-sub {
+            font-size: 0.78rem; color: var(--muted);
+            margin-top: 0.2rem; letter-spacing: 0.03em;
+        }
+
+        /* ── BOTTOM BAR ────────────────────────────────── */
+        #bar-bottom {
+            display: none; /* Disabled so it does not sit on top of the embed player's real controls. */
+        }
+
+        /* Fake progress bar (cosmetic) */
+        #fake-progress {
+            width: 100%; height: 3px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 3px;
+            margin-bottom: 1.1rem;
+            position: relative;
+            overflow: visible;
+            cursor: pointer;
+        }
+        #fake-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #a00, var(--accent-bright));
+            border-radius: 3px;
+            position: relative;
+            transition: width 0.1s linear;
+        }
+        #fake-progress-fill::after {
+            content: '';
+            position: absolute; right: -5px; top: 50%;
+            transform: translateY(-50%);
+            width: 12px; height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-glow);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        #fake-progress:hover #fake-progress-fill::after { opacity: 1; }
+
+        /* Controls row */
+        #controls-row {
+            display: flex; align-items: center; gap: 1rem;
+        }
+
+        .ctrl-btn {
+            background: none; border: none; cursor: pointer;
+            color: rgba(255,255,255,0.75);
+            font-size: 1.1rem;
+            width: 38px; height: 38px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px;
+            transition: color 0.2s, background 0.2s;
+        }
+        .ctrl-btn:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .ctrl-btn.primary {
+            background: var(--accent);
+            color: #fff;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            font-size: 1rem;
+            box-shadow: 0 0 20px var(--accent-glow), 0 0 40px rgba(225,29,40,0.15);
+            transition: transform 0.15s, box-shadow 0.2s;
+        }
+        .ctrl-btn.primary:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 28px var(--accent-glow), 0 0 60px rgba(225,29,40,0.2);
+        }
+
+        #time-display {
+            font-size: 0.78rem; font-weight: 500;
+            color: var(--muted); letter-spacing: 0.04em;
+            min-width: 80px;
+        }
+
+        .ctrl-sep { flex: 1; }
+
+        /* Volume slider */
+        #vol-wrap { display: flex; align-items: center; gap: 0.6rem; }
+        #vol-slider {
+            -webkit-appearance: none;
+            width: 72px; height: 3px;
+            background: rgba(255,255,255,0.18);
+            border-radius: 3px; outline: none; cursor: pointer;
+        }
+        #vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        /* TV controls (season/episode) */
+        #tv-controls {
+            display: flex; align-items: center; gap: 0.5rem;
+            flex-wrap: wrap;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.3rem;
+            backdrop-filter: blur(12px);
+        }
+        #tv-controls.hidden { display: none; }
+
+        .ctrl-label {
+            font-size: 0.72rem; font-weight: 600;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--muted);
+        }
+        .ctrl-select {
+            background: rgba(15,15,25,0.85);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 9px;
+            color: #fff; font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem; font-weight: 500;
+            padding: 0.4rem 0.9rem;
+            cursor: pointer; outline: none;
+            backdrop-filter: blur(10px);
+            transition: border-color 0.2s;
+        }
+        .ctrl-select:hover { border-color: var(--accent); }
+        .ctrl-select option { background: #0c0c18; }
+
+        /* Fullscreen btn */
+        #fs-btn { margin-left: 0.2rem; }
+
+        /* ── Ambient glow behind bar-bottom ─────────────── */
+        #bar-bottom::before {
+            content: '';
+            position: absolute; bottom: 0; left: 10%; right: 10%; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Cinematic loading screen -->
+<div id="loading-screen">
+    <div class="loader-logo">Guyz<span>Modz</span> Stream</div>
+    <div class="loader-title" id="load-title">Loading…</div>
+    <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+</div>
+
+<!-- Full-viewport video/iframe -->
+<div id="video-wrap"></div>
+
+<!-- Overlay -->
+<div id="overlay">
+
+    <!-- Top bar -->
+    <div id="bar-top">
+        <a id="back-btn" href="index.html"><i class="fa-solid fa-chevron-left"></i> Back</a>
+        <div id="title-block">
+            <div id="title-main">Loading…</div>
+            <div id="title-sub"></div>
+        </div>
+
+        <!-- TV: season/episode dropdowns moved to top so bottom embed controls stay clickable -->
+        <div id="tv-controls" class="hidden">
+            <span class="ctrl-label">S</span>
+            <select class="ctrl-select" id="season-select"></select>
+            <span class="ctrl-label">E</span>
+            <select class="ctrl-select" id="episode-select"></select>
+        </div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div id="bar-bottom">
+        <!-- Cosmetic progress bar -->
+        <div id="fake-progress">
+            <div id="fake-progress-fill"></div>
+        </div>
+
+        <!-- Controls -->
+        <div id="controls-row">
+            <!-- Custom controls disabled; embed player controls are used instead. -->
+            <button class="ctrl-btn primary" id="play-btn" title="Play / Pause">
+                <i class="fa-solid fa-play" id="play-icon"></i>
+            </button>
+
+            <button class="ctrl-btn" title="Restart" onclick="reloadPlayer()">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+
+            <div id="vol-wrap">
+                <button class="ctrl-btn" id="mute-btn" title="Mute" onclick="toggleMute()">
+                    <i class="fa-solid fa-volume-high" id="vol-icon"></i>
+                </button>
+                <input type="range" id="vol-slider" min="0" max="100" value="100" title="Volume">
+            </div>
+
+            <div id="time-display">0:00 / —:——</div>
+
+            <div class="ctrl-sep"></div>
+
+            <button class="ctrl-btn" id="fs-btn" title="Fullscreen" onclick="toggleFullscreen()">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+        </div>
+    </div>
+
+</div><!-- /overlay -->
+
+<script src="player.js"></script>
+</body>
+</html>
