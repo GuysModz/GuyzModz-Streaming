@@ -16,7 +16,7 @@ function normalizeApiKey(key) {
 function getApiKey() {
     // Use the key injected by Vercel at build time
     const injected = normalizeApiKey(DEFAULT_API_KEY);
-    if (injected && injected !== '%%TMDB_API_KEY%%') return injected;
+    if (injected) return injected;
 
     // Fallback to localStorage for backwards compatibility
     return normalizeApiKey(localStorage.getItem('tmdb_api_key'));

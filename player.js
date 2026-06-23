@@ -21,7 +21,7 @@ function normalizeApiKey(key) {
 
 function getApiKey() {
     const injected = normalizeApiKey(DEFAULT_API_KEY);
-    if (injected && injected !== '%%TMDB_API_KEY%%') return injected;
+    if (injected) return injected;
     return normalizeApiKey(localStorage.getItem('tmdb_api_key'));
 }
 
