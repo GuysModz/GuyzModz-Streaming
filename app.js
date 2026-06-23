@@ -2,11 +2,11 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const VIDKING_BASE_URL = 'https://www.vidking.net/embed';
 
 // API key is injected at build time from TMDB_API_KEY environment variable
-const DEFAULT_API_KEY = '%%TMDB_API_KEY%%';
+const DEFAULT_API_KEY = 'b80a71388447e647e1ff09bd1fd41a4f';
 
 function getApiKey() {
-    // Use the key injected by Vercel at build time
-    if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '%%TMDB_API_KEY%%') return DEFAULT_API_KEY;
+    // Use hardcoded key (set via Vercel env variable TMDB_API_KEY)
+    if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '') return DEFAULT_API_KEY;
     // Fallback to localStorage for backwards compatibility
     const stored = localStorage.getItem('tmdb_api_key');
     if (stored) return stored;
