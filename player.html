@@ -127,31 +127,6 @@
             margin-top: 0.2rem; letter-spacing: 0.03em;
         }
 
-        /* Source switcher pills */
-        #source-switcher {
-            display: flex; gap: 0.4rem;
-            background: rgba(0,0,0,0.5);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 0.3rem;
-            backdrop-filter: blur(12px);
-        }
-        .src-pill {
-            padding: 0.3rem 0.8rem;
-            border-radius: 7px;
-            font-size: 0.75rem; font-weight: 600;
-            cursor: pointer; border: none;
-            background: transparent; color: var(--muted);
-            transition: all 0.2s;
-            font-family: 'Outfit', sans-serif;
-        }
-        .src-pill:hover { color: #fff; background: rgba(255,255,255,0.06); }
-        .src-pill.active {
-            background: var(--accent);
-            color: #fff;
-            box-shadow: 0 0 14px var(--accent-glow), 0 0 4px rgba(255,45,58,0.3);
-        }
-
         /* ── BOTTOM BAR ────────────────────────────────── */
         #bar-bottom {
             display: none; /* Disabled so it does not sit on top of the embed player's real controls. */
@@ -308,11 +283,6 @@
         <div id="title-block">
             <div id="title-main">Loading…</div>
             <div id="title-sub"></div>
-        </div>
-        <div id="source-switcher">
-            <button class="src-pill active" data-src="vidsrc" onclick="switchSource('vidsrc')">Source 1</button>
-            <button class="src-pill" data-src="vidsrc2" onclick="switchSource('vidsrc2')">Source 2</button>
-            <button class="src-pill" data-src="vidking" onclick="switchSource('vidking')">Source 3</button>
         </div>
 
         <!-- TV: season/episode dropdowns moved to top so bottom embed controls stay clickable -->

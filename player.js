@@ -1,21 +1,15 @@
 // ── Config ──────────────────────────────────────────────────
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
-// Embed sources — cleanest first
-const SOURCES = {
-    vidsrc:  (type, id, s, e) => type === 'movie'
-        ? `https://vidsrc.to/embed/movie/${id}`
-        : `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
-    vidsrc2: (type, id, s, e) => type === 'movie'
-        ? `https://vidsrc.me/embed/movie?tmdb=${id}`
-        : `https://vidsrc.me/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
-    vidking: (type, id, s, e) => type === 'movie'
+// Single working embed source
+function getEmbedUrl(type, id, season, episode) {
+    return type === 'movie'
         ? `https://www.vidking.net/embed/movie/${id}`
-        : `https://www.vidking.net/embed/tv/${id}/${s}/${e}`,
-};
+        : `https://www.vidking.net/embed/tv/${id}/${season}/${episode}`;
+}
 
 // API key injected at build time from TMDB_API_KEY env variable
-const DEFAULT_API_KEY = 'b80a71388447e647e1ff09bd1fd41a4f';
+const DEFAULT_API_KEY = '';
 function getApiKey() {
     if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '') return DEFAULT_API_KEY;
     return localStorage.getItem('tmdb_api_key') || null;
@@ -35,7 +29,6 @@ let currentMedia = {
     season: Number.isFinite(urlSeason) && urlSeason > 0 ? urlSeason : 1,
     episode: Number.isFinite(urlEpisode) && urlEpisode > 0 ? urlEpisode : 1
 };
-let currentSource = 'vidsrc';
 let isPlaying = true; // cosmetic state
 let isMuted   = false;
 let fakeTime  = 0;
@@ -155,8 +148,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── Iframe loader ─────────────────────────────────────────────
 function loadIframe() {
-    const srcFn = SOURCES[currentSource] || SOURCES.vidsrc;
-
     if (currentMedia.type === 'sports') {
         videoWrap.innerHTML = `<video id="live-video" autoplay controls style="width:100%;height:100%;background:#000;"></video>`;
         const vid = document.getElementById('live-video');
@@ -171,7 +162,7 @@ function loadIframe() {
         return;
     }
 
-    const url = srcFn(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
+    const url = getEmbedUrl(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
     videoWrap.innerHTML = `
         <iframe
             src="${url}"
@@ -179,19 +170,9 @@ function loadIframe() {
             frameborder="0"
             allowfullscreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             referrerpolicy="no-referrer"
         ></iframe>
     `;
-}
-
-function switchSource(src) {
-    currentSource = src;
-    document.querySelectorAll('.src-pill').forEach(p => {
-        p.classList.toggle('active', p.dataset.src === src);
-    });
-    loadIframe();
-    resetFakeProgress();
 }
 
 function reloadPlayer() {
