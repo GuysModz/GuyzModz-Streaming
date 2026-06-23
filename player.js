@@ -15,7 +15,7 @@ const SOURCES = {
 };
 
 // API key injected at build time from TMDB_API_KEY env variable
-const DEFAULT_API_KEY = '%%TMDB_API_KEY%%';
+const DEFAULT_API_KEY = 'b80a71388447e647e1ff09bd1fd41a4f';
 function getApiKey() {
     if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '%%TMDB_API_KEY%%') return DEFAULT_API_KEY;
     return localStorage.getItem('tmdb_api_key') || null;
