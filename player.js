@@ -9,9 +9,9 @@ function getEmbedUrl(type, id, season, episode) {
 }
 
 // API key injected at build time from TMDB_API_KEY env variable
-const DEFAULT_API_KEY = '';
+const DEFAULT_API_KEY = '%%TMDB_API_KEY%%';
 function getApiKey() {
-    if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '') return DEFAULT_API_KEY;
+    if (DEFAULT_API_KEY && DEFAULT_API_KEY !== '%%TMDB_API_KEY%%') return DEFAULT_API_KEY;
     return localStorage.getItem('tmdb_api_key') || null;
 }
 
