@@ -530,15 +530,15 @@ body {
 
 /* Full Window Modal Styling */
 .full-window-modal {
-    width: 100% !important;
-    height: 100% !important;
+    width: 100vw !important;
+    height: 100vh !important;
     max-width: none !important;
     border-radius: 0 !important;
     border: none !important;
     display: flex;
     flex-direction: column;
-    padding: 1.5rem 5% !important;
-    background: var(--bg-color);
+    padding: 0.8rem 1rem !important;
+    background: #000;
     transform: translateY(100%);
     opacity: 0;
 }
@@ -627,9 +627,12 @@ body {
 
 .full-window-modal .iframe-container {
     flex-grow: 1;
-    height: auto;
+    width: 100%;
+    height: calc(100vh - 60px);
     aspect-ratio: auto;
-    border-radius: 12px;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
 }
 
 .close-modal {

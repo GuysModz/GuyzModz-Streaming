@@ -5,12 +5,6 @@ const EMBED_PROVIDERS = {
         type === 'movie' ? `https://www.vidking.net/embed/movie/${id}` : `https://www.vidking.net/embed/tv/${id}/${season}/${episode}`,
     vidsrc_cc: (type, id, season, episode) => 
         type === 'movie' ? `https://vidsrc.cc/v2/embed/movie/${id}` : `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}`,
-    vidsrc_pro: (type, id, season, episode) => 
-        type === 'movie' ? `https://vidsrc.pro/embed/movie/${id}` : `https://vidsrc.pro/embed/tv/${id}/${season}/${episode}`,
-    autoembed: (type, id, season, episode) => 
-        type === 'movie' ? `https://player.autoembed.cc/embed/movie/${id}` : `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`,
-    embedsu: (type, id, season, episode) => 
-        type === 'movie' ? `https://embed.su/embed/movie/${id}` : `https://embed.su/embed/tv/${id}/${season}/${episode}`,
     embed2: (type, id, season, episode) => 
         type === 'movie' ? `https://www.2embed.cc/embed/${id}` : `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`
 };
