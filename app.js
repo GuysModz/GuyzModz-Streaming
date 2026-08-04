@@ -73,6 +73,7 @@ const demoShows = [
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initScrollEffect();
+    renderDemoContent(); // Instant zero-latency render so grid is NEVER blank
     checkApiKey();
     setupEventListeners();
     populateSeasonSelect(5);
@@ -111,10 +112,8 @@ function checkApiKey() {
                 apiNotice.classList.add('show');
             }, 2000);
         }
-        renderDemoContent();
-    } else {
-        loadContent();
     }
+    loadContent();
 }
 
 // Event Listeners Setup
@@ -162,7 +161,7 @@ function setupEventListeners() {
         });
     });
 
-    // Mobile Key Button
+    // Navbar Key Icon (Mobile)
     const navKeyMobile = document.querySelector('.nav-key-mobile');
     if (navKeyMobile) {
         navKeyMobile.addEventListener('click', (e) => {
@@ -264,25 +263,27 @@ function setupEventListeners() {
 
 // Render Functions
 function renderMediaCard(item, type) {
-    const title = type === 'movie' ? item.title : item.name;
+    if (!item) return '';
+    const rawTitle = (type === 'movie' ? (item.title || item.original_title) : (item.name || item.original_name)) || 'Untitled';
+    const cleanTitle = String(rawTitle).replace(/['"\\]/g, "\\$&");
     const date = type === 'movie' ? (item.release_date || '').split('-')[0] : (item.first_air_date || '').split('-')[0];
-    const rating = item.vote_average ? item.vote_average.toFixed(1) : 'NR';
+    const rating = (typeof item.vote_average === 'number' && !isNaN(item.vote_average)) ? item.vote_average.toFixed(1) : 'NR';
     const poster = item.poster_path
         ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
         : 'https://via.placeholder.com/500x750?text=No+Poster';
 
     return `
-        <div class="media-card" onclick="window.openPlayer('${type}', '${item.id}', '${title.replace(/'/g, "\\'")}')">
+        <div class="media-card" onclick="window.openPlayer('${type}', '${item.id}', '${cleanTitle}')">
             <div class="poster-wrapper">
-                <img src="${poster}" alt="${title}" class="poster" loading="lazy">
+                <img src="${poster}" alt="${cleanTitle}" class="poster" loading="lazy">
                 <div class="play-overlay">
                     <i class="fa-solid fa-circle-play"></i>
                 </div>
             </div>
             <div class="media-info">
-                <div class="media-title">${title}</div>
+                <div class="media-title">${rawTitle}</div>
                 <div class="media-meta">
-                    <span>${date}</span>
+                    <span>${date || '2024'}</span>
                     <span class="rating"><i class="fa-solid fa-star"></i> ${rating}</span>
                 </div>
             </div>
