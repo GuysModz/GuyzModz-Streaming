@@ -104,70 +104,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function loadIframe() {
-    if (window.activeHlsInstance) {
-        window.activeHlsInstance.destroy();
-        window.activeHlsInstance = null;
-    }
+    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidking;
+    const embedUrl = providerFunc(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
 
-    if (currentMedia.type === 'sports') {
-        iframeContainer.innerHTML = `
-            <video id="live-player" controls autoplay style="width: 100%; height: 100%; background: #000; border-radius: 12px;"></video>
-        `;
-        
-        const video = document.getElementById('live-player');
-        const streamUrl = currentMedia.id;
-
-        if (Hls.isSupported()) {
-            const hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-                backBufferLength: 90
-            });
-            hls.loadSource(streamUrl);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
-            });
-            hls.on(Hls.Events.ERROR, (event, data) => {
-                if (data.fatal) {
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            console.log("Fatal network error in stream, reconnecting...");
-                            hls.startLoad();
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            console.log("Fatal media error in stream, recovering...");
-                            hls.recoverMediaError();
-                            break;
-                        default:
-                            console.log("Unrecoverable error:", data);
-                            hls.destroy();
-                            break;
-                    }
-                }
-            });
-            window.activeHlsInstance = hls;
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = streamUrl;
-            video.addEventListener('loadedmetadata', () => {
-                video.play().catch(e => console.log("Play interrupted or autoplay blocked:", e));
-            });
-        }
-    } else {
-        const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidking;
-        const embedUrl = providerFunc(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
-
-        iframeContainer.innerHTML = `
-            <iframe 
-                src="${embedUrl}" 
-                width="100%" 
-                height="100%" 
-                frameborder="0" 
-                allowfullscreen
-                allow="autoplay; encrypted-media; picture-in-picture; fullscreen; accelerometer; gyroscope">
-            </iframe>
-        `;
-    }
+    iframeContainer.innerHTML = `
+        <iframe 
+            src="${embedUrl}" 
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            allowfullscreen
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen; accelerometer; gyroscope">
+        </iframe>
+    `;
 }
 
 async function fetchFromTMDB(endpoint) {
