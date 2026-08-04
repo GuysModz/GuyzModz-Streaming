@@ -1,40 +1,33 @@
 const fs = require('fs');
 const path = require('path');
 
-const root = __dirname;
-const dist = path.join(root, 'dist');
+const distPath = path.join(__dirname, 'dist');
 
-// Always rebuild dist from scratch so old/corrupt files cannot stay cached.
-if (fs.existsSync(dist)) fs.rmSync(dist, { recursive: true, force: true });
-fs.mkdirSync(dist, { recursive: true });
-
-const apiKey = String(process.env.TMDB_API_KEY || process.env.TMDB_KEY || '').trim().replace(/^Bearer\s+/i, '').replace(/^['\"]|['\"]$/g, '').trim();
-
-if (!apiKey) {
-  console.warn('⚠️  TMDB_API_KEY/TMDB_KEY env variable is not set — TMDB live content/search may not load.');
-} else {
-  console.log('✅ TMDB_API_KEY found, injecting...');
+// 1. Create dist directory if it doesn't exist
+if (!fs.existsSync(distPath)) {
+    fs.mkdirSync(distPath);
 }
 
-const files = ['index.html', 'style.css', 'app.js', 'player.html', 'player.js'];
+// 2. Files to copy to dist
+const filesToCopy = ['index.html', 'style.css', 'app.js', 'player.html', 'player.js'];
 
-for (const file of files) {
-  const src = path.join(root, file);
-  const dest = path.join(dist, file);
+filesToCopy.forEach(file => {
+    const src = path.join(__dirname, file);
+    const dest = path.join(distPath, file);
+    
+    if (fs.existsSync(src)) {
+        let content = fs.readFileSync(src, 'utf8');
+        
+        // 3. If it's app.js, inject the key
+        if (file === 'app.js') {
+            const key = process.env.TMDB_KEY || '';
+            content = content.replace('%%TMDB_KEY_PLACEHOLDER%%', key);
+            console.log('Injected TMDB_KEY into dist/app.js');
+        }
+        
+        fs.writeFileSync(dest, content);
+        console.log(`Copied ${file} to dist/`);
+    }
+});
 
-  if (!fs.existsSync(src)) {
-    console.warn(`⚠️  Missing: ${file}`);
-    continue;
-  }
-
-  let content = fs.readFileSync(src, 'utf8');
-
-  if (file.endsWith('.js')) {
-    content = content.replace(/%%TMDB_API_KEY%%/g, apiKey);
-  }
-
-  fs.writeFileSync(dest, content);
-  console.log(`✅ ${file} → dist/`);
-}
-
-console.log('🎉 Build complete → dist/');
+console.log('Build complete! Your site is ready in the "dist" folder.');
