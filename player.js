@@ -39,7 +39,7 @@ let currentMedia = {
 
 function getApiKey() {
     const stored = localStorage.getItem('tmdb_api_key');
-    const DEFAULT_API_KEY = '%%TMDB_KEY_PLACEHOLDER%%';
+    const DEFAULT_API_KEY = 'b80a71388447e647e1ff09bd1fd41a4f';
     if (stored) return stored;
     if (DEFAULT_API_KEY && !DEFAULT_API_KEY.includes('PLACEHOLDER')) return DEFAULT_API_KEY;
     return null;

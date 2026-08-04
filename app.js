@@ -16,7 +16,7 @@ const EMBED_PROVIDERS = {
 };
 
 // PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
-const DEFAULT_API_KEY = '%%TMDB_KEY_PLACEHOLDER%%'; 
+const DEFAULT_API_KEY = 'b80a71388447e647e1ff09bd1fd41a4f'; 
 
 function getApiKey() {
     const stored = localStorage.getItem('tmdb_api_key');
@@ -115,9 +115,11 @@ async function setApiKey(key) {
 function checkApiKey() {
     const key = getApiKey();
     if (!key) {
-        setTimeout(() => {
-            apiNotice.classList.add('show');
-        }, 2000);
+        if (!localStorage.getItem('tmdb_notice_dismissed')) {
+            setTimeout(() => {
+                apiNotice.classList.add('show');
+            }, 2000);
+        }
         renderDemoContent();
     } else {
         loadContent();
@@ -226,6 +228,7 @@ function setupEventListeners() {
     }
 
     dismissNoticeBtn.addEventListener('click', () => {
+        localStorage.setItem('tmdb_notice_dismissed', 'true');
         apiNotice.classList.remove('show');
     });
 
