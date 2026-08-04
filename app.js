@@ -352,10 +352,11 @@ async function fetchFromTMDB(endpoint) {
     try {
         const separator = endpoint.includes('?') ? '&' : '?';
         const url = `${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`;
-        console.log("Fetching from TMDB:", url.replace(key, 'HIDDEN'));
         
-        const response = await fetch(url);
-        console.log("TMDB Response Status:", response.status);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 second safety fallback
+
+        const response = await fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
         
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
@@ -365,35 +366,51 @@ async function fetchFromTMDB(endpoint) {
         return await response.json();
     } catch (error) {
         console.error("Fetch error details:", error);
-        throw error; // Re-throw so performSearch can show the message
+        throw error;
     }
 }
 
 async function loadContent() {
-    const moviesData = await fetchFromTMDB('/trending/movie/week');
-    if (moviesData && moviesData.results) {
-        currentMoviesList = moviesData.results;
-        renderMovies();
+    try {
+        const moviesData = await fetchFromTMDB('/trending/movie/week');
+        if (moviesData && moviesData.results && moviesData.results.length > 0) {
+            currentMoviesList = moviesData.results;
+            renderMovies();
 
-        // Update Hero
-        const heroMovie = moviesData.results[0];
-        const heroTitle = document.getElementById('hero-title');
-        const heroOverview = document.getElementById('hero-overview');
-        const heroBackdrop = document.querySelector('.hero-backdrop');
-        const heroBtn = document.querySelector('.hero .btn-primary');
+            // Update Hero
+            const heroMovie = moviesData.results[0];
+            const heroTitle = document.getElementById('hero-title');
+            const heroOverview = document.getElementById('hero-overview');
+            const heroBackdrop = document.querySelector('.hero-backdrop');
+            const heroBtn = document.querySelector('.hero .btn-primary');
 
-        if (heroTitle) heroTitle.textContent = heroMovie.title;
-        if (heroOverview) heroOverview.textContent = heroMovie.overview;
-        if (heroBackdrop) heroBackdrop.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${heroMovie.backdrop_path})`;
-        if (heroBtn) heroBtn.setAttribute('onclick', `openPlayer('movie', '${heroMovie.id}', '${heroMovie.title.replace(/'/g, "\\'")}')`);
-    } else {
+            if (heroTitle) heroTitle.textContent = heroMovie.title;
+            if (heroOverview) heroOverview.textContent = heroMovie.overview;
+            if (heroBackdrop) heroBackdrop.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${heroMovie.backdrop_path})`;
+            if (heroBtn) heroBtn.setAttribute('onclick', `openPlayer('movie', '${heroMovie.id}', '${heroMovie.title.replace(/'/g, "\\'")}')`);
+        } else {
+            renderDemoContent();
+        }
+    } catch (e) {
+        console.error("Failed to load movies, falling back to demo content:", e);
         renderDemoContent();
     }
 
-    const showsData = await fetchFromTMDB('/trending/tv/week');
-    if (showsData && showsData.results) {
-        currentShowsList = showsData.results;
-        renderShows();
+    try {
+        const showsData = await fetchFromTMDB('/trending/tv/week');
+        if (showsData && showsData.results && showsData.results.length > 0) {
+            currentShowsList = showsData.results;
+            renderShows();
+        } else if (!currentShowsList || currentShowsList.length === 0) {
+            currentShowsList = demoShows;
+            renderShows();
+        }
+    } catch (e) {
+        console.error("Failed to load TV shows:", e);
+        if (!currentShowsList || currentShowsList.length === 0) {
+            currentShowsList = demoShows;
+            renderShows();
+        }
     }
 }
 
@@ -442,14 +459,6 @@ async function performSearch() {
             showsGrid.innerHTML = '<p class="no-results">No shows found.</p>';
             const seeAllBtn = document.getElementById('see-all-shows');
             if (seeAllBtn) seeAllBtn.style.display = 'none';
-        }
-
-        // Search Sports
-        if (sportsChannels && sportsChannels.length > 0) {
-            const sportsHeading = document.querySelector('#sports-section h2');
-            if (sportsHeading) sportsHeading.textContent = `Search Results: Live Sports`;
-            activeSportsFilter = query; // Use query as custom filter string
-            renderSportsGrid();
         }
 
         // Scroll down to results
