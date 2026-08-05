@@ -4,7 +4,7 @@ const EMBED_PROVIDERS = {
     vidking: (type, id, season, episode) => 
         type === 'movie' ? `https://www.vidking.net/embed/movie/${id}` : `https://www.vidking.net/embed/tv/${id}/${season}/${episode}`,
     vidsrc_cc: (type, id, season, episode) => 
-        type === 'movie' ? `https://vidsrc.cc/v2/embed/movie/${id}` : `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}`,
+        type === 'movie' ? `https://vidsrc.in/embed/movie/${id}` : `https://vidsrc.in/embed/tv/${id}/${season}/${episode}`,
     embed2: (type, id, season, episode) => 
         type === 'movie' ? `https://www.2embed.cc/embed/${id}` : `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`
 };
@@ -563,6 +563,7 @@ function loadIframe() {
             height="100%" 
             frameborder="0" 
             allowfullscreen
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen; accelerometer; gyroscope">
         </iframe>
     `;
