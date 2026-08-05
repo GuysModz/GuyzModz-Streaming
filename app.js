@@ -30,25 +30,35 @@ async function fetchFromTMDB(endpoint) {
     }
 
     const separator = endpoint.includes('?') ? '&' : '?';
-    const url = `${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`;
+    const targetUrl = `${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`;
 
+    // Attempt 1: Direct fetch
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            console.error(`TMDB HTTP Error: ${response.status}`);
-            throw new Error(`TMDB HTTP ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.warn("TMDB Fetch Retry Attempt:", error);
-        try {
-            const retryRes = await fetch(url);
-            if (retryRes.ok) return await retryRes.json();
-        } catch (retryErr) {
-            console.error("TMDB Retry Failed:", retryErr);
-        }
-        throw error;
+        const response = await fetch(targetUrl);
+        if (response.ok) return await response.json();
+    } catch (e) {
+        console.warn("Direct TMDB fetch failed/blocked, attempting proxy...", e);
     }
+
+    // Attempt 2: CorsProxy fallback (bypasses adblockers & CORS)
+    try {
+        const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
+        const res = await fetch(proxyUrl);
+        if (res.ok) return await res.json();
+    } catch (e) {
+        console.warn("CorsProxy failed, attempting mirror...", e);
+    }
+
+    // Attempt 3: Alternative CORS Proxy
+    try {
+        const altProxy = `https://thingproxy.freeboard.io/fetch/${targetUrl}`;
+        const res2 = await fetch(altProxy);
+        if (res2.ok) return await res2.json();
+    } catch (e) {
+        console.error("All TMDB fetch attempts failed:", e);
+    }
+
+    return null;
 }
 
 // DOM Elements
@@ -90,7 +100,7 @@ const demoMovies = [
     { id: 533535, title: "Deadpool & Wolverine", poster_path: "/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg", vote_average: 7.7 },
     { id: 1022789, title: "Inside Out 2", poster_path: "/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg", vote_average: 7.6 },
     { id: 653346, title: "Kingdom of the Planet of the Apes", poster_path: "/gKkl37BQuKTanygYQG1pyYgLVgf.jpg", vote_average: 6.9 },
-    { id: 693134, title: "Dune: Part Two", poster_path: "/1pdfLvkbY9ohJlCjQH2IGpbRXYS.jpg", vote_average: 8.2 },
+    { id: 693134, title: "Dune: Part Two", poster_path: "/czba3y5YePOyFH39j088Y3x6yPh.jpg", vote_average: 8.2 },
     { id: 929590, title: "Civil War", poster_path: "/sh7Rg8Er3tFcN9BpKIPOMvALgZd.jpg", vote_average: 7.0 }
 ];
 
