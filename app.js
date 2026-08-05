@@ -13,10 +13,42 @@ const EMBED_PROVIDERS = {
 const DEFAULT_API_KEY = 'b80a71388447e647e1ff09bd1fd41a4f'; 
 
 function getApiKey() {
+    if (DEFAULT_API_KEY && DEFAULT_API_KEY.length >= 20 && !DEFAULT_API_KEY.includes('PLACEHOLDER')) {
+        return DEFAULT_API_KEY;
+    }
     const stored = localStorage.getItem('tmdb_api_key');
-    if (stored) return stored;
-    if (DEFAULT_API_KEY && !DEFAULT_API_KEY.includes('PLACEHOLDER')) return DEFAULT_API_KEY;
+    if (stored && stored.length >= 20) return stored;
     return null;
+}
+
+// Data Fetching
+async function fetchFromTMDB(endpoint) {
+    const key = getApiKey();
+    if (!key) {
+        console.warn("No API key found.");
+        return null;
+    }
+
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const url = `${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.error(`TMDB HTTP Error: ${response.status}`);
+            throw new Error(`TMDB HTTP ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.warn("TMDB Fetch Retry Attempt:", error);
+        try {
+            const retryRes = await fetch(url);
+            if (retryRes.ok) return await retryRes.json();
+        } catch (retryErr) {
+            console.error("TMDB Retry Failed:", retryErr);
+        }
+        throw error;
+    }
 }
 
 // DOM Elements
@@ -359,34 +391,7 @@ function renderShows() {
     }
 }
 
-// Data Fetching
-async function fetchFromTMDB(endpoint) {
-    const key = getApiKey();
-    if (!key) {
-        console.warn("No API key found.");
-        return null;
-    }
 
-    try {
-        const separator = endpoint.includes('?') ? '&' : '?';
-        const url = `${TMDB_BASE_URL}${endpoint}${separator}api_key=${key}&language=en-US`;
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 second safety fallback
-
-        const response = await fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
-        
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            console.error("TMDB Error Details:", errData);
-            throw new Error(`TMDB Error: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error("Fetch error details:", error);
-        throw error;
-    }
-}
 
 async function loadContent() {
     try {
