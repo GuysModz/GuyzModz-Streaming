@@ -117,15 +117,18 @@ function checkApiKey() {
 }
 
 // Event Listeners Setup
+// Event Listeners Setup
 function setupEventListeners() {
     // Player Modal
-    closeModalBtn.addEventListener('click', closePlayer);
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closePlayer);
     
     // Add Key Button
-    addKeyBtn.addEventListener('click', () => {
-        apiKeyModal.classList.add('active');
-        apiKeyInput.value = getApiKey() || '';
-    });
+    if (addKeyBtn) {
+        addKeyBtn.addEventListener('click', () => {
+            if (apiKeyModal) apiKeyModal.classList.add('active');
+            if (apiKeyInput) apiKeyInput.value = getApiKey() || '';
+        });
+    }
 
     // Mobile Menu
     const hamburger = document.getElementById('hamburger');
@@ -133,19 +136,19 @@ function setupEventListeners() {
     const mobileMenu = document.getElementById('mobile-menu');
     const mobileSearchToggle = document.getElementById('mobile-search-toggle');
 
-    if (hamburger) {
+    if (hamburger && mobileMenu) {
         hamburger.addEventListener('click', () => {
             mobileMenu.classList.add('active');
         });
     }
 
-    if (closeMobileMenu) {
+    if (closeMobileMenu && mobileMenu) {
         closeMobileMenu.addEventListener('click', () => {
             mobileMenu.classList.remove('active');
         });
     }
 
-    if (mobileSearchToggle) {
+    if (mobileSearchToggle && navbar && searchInput) {
         mobileSearchToggle.addEventListener('click', () => {
             navbar.classList.toggle('search-active');
             if (navbar.classList.contains('search-active')) {
@@ -157,7 +160,7 @@ function setupEventListeners() {
     // Close mobile menu when link is clicked
     document.querySelectorAll('.mobile-menu-links a').forEach(link => {
         link.addEventListener('click', () => {
-            mobileMenu.classList.remove('active');
+            if (mobileMenu) mobileMenu.classList.remove('active');
         });
     });
 
@@ -166,9 +169,9 @@ function setupEventListeners() {
     if (navKeyMobile) {
         navKeyMobile.addEventListener('click', (e) => {
             e.preventDefault();
-            mobileMenu.classList.remove('active');
-            apiKeyModal.classList.add('active');
-            apiKeyInput.value = getApiKey() || '';
+            if (mobileMenu) mobileMenu.classList.remove('active');
+            if (apiKeyModal) apiKeyModal.classList.add('active');
+            if (apiKeyInput) apiKeyInput.value = getApiKey() || '';
         });
     }
 
@@ -177,36 +180,44 @@ function setupEventListeners() {
     if (navKeyBtn) {
         navKeyBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            apiKeyModal.classList.add('active');
-            apiKeyInput.value = getApiKey() || '';
+            if (apiKeyModal) apiKeyModal.classList.add('active');
+            if (apiKeyInput) apiKeyInput.value = getApiKey() || '';
         });
     }
 
-    dismissNoticeBtn.addEventListener('click', () => {
-        localStorage.setItem('tmdb_notice_dismissed', 'true');
-        apiNotice.classList.remove('show');
-    });
+    if (dismissNoticeBtn) {
+        dismissNoticeBtn.addEventListener('click', () => {
+            localStorage.setItem('tmdb_notice_dismissed', 'true');
+            if (apiNotice) apiNotice.classList.remove('show');
+        });
+    }
 
-    closeKeyModalBtn.addEventListener('click', () => {
-        apiKeyModal.classList.remove('active');
-    });
+    if (closeKeyModalBtn) {
+        closeKeyModalBtn.addEventListener('click', () => {
+            if (apiKeyModal) apiKeyModal.classList.remove('active');
+        });
+    }
 
-    saveKeyBtn.addEventListener('click', async () => {
-        const key = apiKeyInput.value.trim();
-        if (key) {
-            saveKeyBtn.disabled = true;
-            saveKeyBtn.textContent = "Validating...";
-            await setApiKey(key);
-            saveKeyBtn.disabled = false;
-            saveKeyBtn.textContent = "Save Key";
-        }
-    });
+    if (saveKeyBtn) {
+        saveKeyBtn.addEventListener('click', async () => {
+            const key = apiKeyInput ? apiKeyInput.value.trim() : '';
+            if (key) {
+                saveKeyBtn.disabled = true;
+                saveKeyBtn.textContent = "Validating...";
+                await setApiKey(key);
+                saveKeyBtn.disabled = false;
+                saveKeyBtn.textContent = "Save Key";
+            }
+        });
+    }
 
     // Search
-    searchBtn.addEventListener('click', performSearch);
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') performSearch();
-    });
+    if (searchBtn) searchBtn.addEventListener('click', performSearch);
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+    }
 
     // See All / Show Less Movies
     const seeAllMoviesBtn = document.getElementById('see-all-movies');
@@ -229,21 +240,25 @@ function setupEventListeners() {
     }
 
     // TV Controls
-    seasonSelect.addEventListener('change', () => {
-        const selectedOption = seasonSelect.options[seasonSelect.selectedIndex];
-        const episodeCount = selectedOption ? (selectedOption.dataset.episodeCount || 24) : 24;
-        populateEpisodeSelect(episodeCount);
-        
-        currentMedia.season = seasonSelect.value;
-        currentMedia.episode = episodeSelect.value;
-        loadIframe();
-    });
+    if (seasonSelect) {
+        seasonSelect.addEventListener('change', () => {
+            const selectedOption = seasonSelect.options[seasonSelect.selectedIndex];
+            const episodeCount = selectedOption ? (selectedOption.dataset.episodeCount || 24) : 24;
+            populateEpisodeSelect(episodeCount);
+            
+            currentMedia.season = seasonSelect.value;
+            currentMedia.episode = episodeSelect.value;
+            loadIframe();
+        });
+    }
 
-    episodeSelect.addEventListener('change', () => {
-        currentMedia.season = seasonSelect.value;
-        currentMedia.episode = episodeSelect.value;
-        loadIframe();
-    });
+    if (episodeSelect) {
+        episodeSelect.addEventListener('change', () => {
+            currentMedia.season = seasonSelect.value;
+            currentMedia.episode = episodeSelect.value;
+            loadIframe();
+        });
+    }
 
     const serverSelect = document.getElementById('server-select');
     if (serverSelect) {
@@ -301,7 +316,8 @@ function renderDemoContent() {
 }
 
 function renderMovies() {
-    const list = currentMoviesList;
+    if (!moviesGrid) return;
+    const list = (currentMoviesList && currentMoviesList.length > 0) ? currentMoviesList : demoMovies;
     const limit = isMoviesExpanded ? list.length : 10;
     moviesGrid.innerHTML = list.slice(0, limit).map(m => renderMediaCard(m, 'movie')).join('');
     
@@ -322,7 +338,8 @@ function renderMovies() {
 }
 
 function renderShows() {
-    const list = currentShowsList;
+    if (!showsGrid) return;
+    const list = (currentShowsList && currentShowsList.length > 0) ? currentShowsList : demoShows;
     const limit = isShowsExpanded ? list.length : 10;
     showsGrid.innerHTML = list.slice(0, limit).map(s => renderMediaCard(s, 'tv')).join('');
     
