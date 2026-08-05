@@ -643,5 +643,3 @@ async function loadTVDetails(id) {
         populateSeasonSelect(5);
     }
 }
-
-}
