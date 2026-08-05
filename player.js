@@ -114,7 +114,6 @@ function loadIframe() {
             height="100%" 
             frameborder="0" 
             allowfullscreen
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen; accelerometer; gyroscope">
         </iframe>
     `;
