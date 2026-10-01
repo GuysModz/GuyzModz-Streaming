@@ -1,12 +1,12 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 const EMBED_PROVIDERS = {
-    vidsrc_to: (type, id, season, episode) => 
-        type === 'movie' ? `https://vidsrc.to/embed/movie/${id}` : `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`,
     anyembed: (type, id, season, episode) => 
         type === 'movie' ? `https://anyembed.xyz/embed/tmdb-movie-${id}` : `https://anyembed.xyz/embed/tmdb-tv-${id}-${season}-${episode}`,
-    multiembed: (type, id, season, episode) => 
-        type === 'movie' ? `https://multiembed.mov/?video_id=${id}&tmdb=1` : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
+    embed2: (type, id, season, episode) => 
+        type === 'movie' ? `https://www.2embed.cc/embed/${id}` : `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`,
+    autoembed: (type, id, season, episode) => 
+        type === 'movie' ? `https://autoembed.co/movie/tmdb/${id}` : `https://autoembed.co/tv/tmdb/${id}-${season}-${episode}`
 };
 
 // PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
@@ -88,7 +88,7 @@ let currentMedia = {
     id: null,
     season: 1,
     episode: 1,
-    server: 'vidsrc_to'
+    server: 'anyembed'
 };
 let currentMoviesList = [];
 let currentShowsList = [];
@@ -553,7 +553,7 @@ window.openPlayer = async function (type, id, title) {
 };
 
 function loadIframe() {
-    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidsrc_to;
+    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.anyembed;
     const embedUrl = providerFunc(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
 
     iframeContainer.innerHTML = `
