@@ -1,12 +1,12 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 const EMBED_PROVIDERS = {
-    vidlink: (type, id, season, episode) => 
-        type === 'movie' ? `https://vidlink.pro/movie/${id}?autoplay=false` : `https://vidlink.pro/tv/${id}/${season}/${episode}?autoplay=false`,
-    vidsrc_sh: (type, id, season, episode) => 
-        type === 'movie' ? `https://vidsrc.sh/embed/movie/${id}` : `https://vidsrc.sh/embed/tv/${id}/${season}/${episode}`,
-    autoembed: (type, id, season, episode) => 
-        type === 'movie' ? `https://autoembed.co/movie/tmdb/${id}` : `https://autoembed.co/tv/tmdb/${id}-${season}-${episode}`
+    vidsrc_to: (type, id, season, episode) => 
+        type === 'movie' ? `https://vidsrc.to/embed/movie/${id}` : `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`,
+    anyembed: (type, id, season, episode) => 
+        type === 'movie' ? `https://anyembed.xyz/embed/tmdb-movie-${id}` : `https://anyembed.xyz/embed/tmdb-tv-${id}-${season}-${episode}`,
+    multiembed: (type, id, season, episode) => 
+        type === 'movie' ? `https://multiembed.mov/?video_id=${id}&tmdb=1` : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
 };
 
 // Get params from URL
@@ -28,7 +28,7 @@ let currentMedia = {
     id: id,
     season: 1,
     episode: 1,
-    server: 'vidlink'
+    server: 'vidsrc_to'
 };
 
 function getApiKey() {
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function loadIframe() {
-    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidlink;
+    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidsrc_to;
     const embedUrl = providerFunc(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
 
     iframeContainer.innerHTML = `
