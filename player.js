@@ -1,12 +1,26 @@
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 const EMBED_PROVIDERS = {
-    anyembed: (type, id, season, episode) => 
-        type === 'movie' ? `https://anyembed.xyz/embed/tmdb-movie-${id}` : `https://anyembed.xyz/embed/tmdb-tv-${id}-${season}-${episode}`,
+    vidlink: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://vidlink.pro/movie/${id}?primaryColor=007bff&secondaryColor=1e3a8a` 
+            : `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=007bff&secondaryColor=1e3a8a`,
+    vidsrcsu: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://vidsrc.su/embed/movie/${id}` 
+            : `https://vidsrc.su/embed/tv/${id}/${season}/${episode}`,
+    vidsrcpm: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://vidsrc.pm/embed/movie/${id}` 
+            : `https://vidsrc.pm/embed/tv/${id}/${season}/${episode}`,
+    multiembed: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://multiembed.mov/?video_id=${id}&tmdb=1` 
+            : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
     embed2: (type, id, season, episode) => 
-        type === 'movie' ? `https://www.2embed.cc/embed/${id}` : `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`,
-    autoembed: (type, id, season, episode) => 
-        type === 'movie' ? `https://autoembed.co/movie/tmdb/${id}` : `https://autoembed.co/tv/tmdb/${id}-${season}-${episode}`
+        type === 'movie' 
+            ? `https://www.2embed.cc/embed/${id}` 
+            : `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`
 };
 
 // Get params from URL
@@ -28,7 +42,7 @@ let currentMedia = {
     id: id,
     season: 1,
     episode: 1,
-    server: 'anyembed'
+    server: 'vidlink'
 };
 
 function getApiKey() {
@@ -104,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function loadIframe() {
-    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.anyembed;
+    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidlink;
     const embedUrl = providerFunc(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
 
     iframeContainer.innerHTML = `
@@ -114,6 +128,7 @@ function loadIframe() {
             height="100%" 
             frameborder="0" 
             allowfullscreen
+            referrerpolicy="origin"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen; accelerometer; gyroscope">
         </iframe>
     `;
