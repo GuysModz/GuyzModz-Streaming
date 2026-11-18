@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -186,11 +186,13 @@
                 <div class="player-server-controls">
                     <label for="server-select"><i class="fa-solid fa-server"></i> Server:</label>
                     <select id="server-select" class="server-select">
-                        <option value="vidlink" selected>Server 1 (VidLink - High Speed)</option>
-                        <option value="vidsrcsu">Server 2 (VidSrc SU - Multi-Source)</option>
-                        <option value="vidsrcpm">Server 3 (VidSrc PM - HD Mirror)</option>
-                        <option value="multiembed">Server 4 (SuperEmbed - Multi-Host)</option>
-                        <option value="embed2">Server 5 (2Embed - Fallback)</option>
+                        <option value="vidsrcme" selected>Server 1 (VidSrc ME - Fast CDN)</option>
+                        <option value="vidsrcnet">Server 2 (VidSrc NET - HD Stream)</option>
+                        <option value="vidsrcsu">Server 3 (VidSrc SU - Multi-Source)</option>
+                        <option value="vidsrcpm">Server 4 (VidSrc PM - Mirror)</option>
+                        <option value="vidlink">Server 5 (VidLink Pro)</option>
+                        <option value="autoembed">Server 6 (AutoEmbed)</option>
+                        <option value="embed2">Server 7 (2Embed Fallback)</option>
                     </select>
                     <button id="reload-btn" class="btn btn-secondary btn-small" style="padding: 0.4rem 0.8rem;" title="Reload Stream"><i class="fa-solid fa-rotate-right"></i> Reload</button>
                 </div>

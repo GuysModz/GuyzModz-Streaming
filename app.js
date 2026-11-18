@@ -1,10 +1,14 @@
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+﻿const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 const EMBED_PROVIDERS = {
-    vidlink: (type, id, season, episode) => 
+    vidsrcme: (type, id, season, episode) => 
         type === 'movie' 
-            ? `https://vidlink.pro/movie/${id}?primaryColor=007bff&secondaryColor=1e3a8a` 
-            : `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=007bff&secondaryColor=1e3a8a`,
+            ? `https://vidsrc.me/embed/movie?tmdb=${id}` 
+            : `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`,
+    vidsrcnet: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://vidsrc.net/embed/movie/${id}` 
+            : `https://vidsrc.net/embed/tv/${id}/${season}/${episode}`,
     vidsrcsu: (type, id, season, episode) => 
         type === 'movie' 
             ? `https://vidsrc.su/embed/movie/${id}` 
@@ -13,10 +17,14 @@ const EMBED_PROVIDERS = {
         type === 'movie' 
             ? `https://vidsrc.pm/embed/movie/${id}` 
             : `https://vidsrc.pm/embed/tv/${id}/${season}/${episode}`,
-    multiembed: (type, id, season, episode) => 
+    vidlink: (type, id, season, episode) => 
         type === 'movie' 
-            ? `https://multiembed.mov/?video_id=${id}&tmdb=1` 
-            : `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`,
+            ? `https://vidlink.pro/movie/${id}?primaryColor=007bff&secondaryColor=1e3a8a` 
+            : `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=007bff&secondaryColor=1e3a8a`,
+    autoembed: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://autoembed.co/movie/tmdb/${id}` 
+            : `https://autoembed.co/tv/tmdb/${id}-${season}-${episode}`,
     embed2: (type, id, season, episode) => 
         type === 'movie' 
             ? `https://www.2embed.cc/embed/${id}` 
@@ -102,7 +110,7 @@ let currentMedia = {
     id: null,
     season: 1,
     episode: 1,
-    server: 'vidlink'
+    server: 'vidsrcme'
 };
 let currentMoviesList = [];
 let currentShowsList = [];
@@ -567,7 +575,7 @@ window.openPlayer = async function (type, id, title) {
 };
 
 function loadIframe() {
-    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidlink;
+    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidsrcme;
     const embedUrl = providerFunc(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
 
     iframeContainer.innerHTML = `
@@ -577,7 +585,7 @@ function loadIframe() {
             height="100%" 
             frameborder="0" 
             allowfullscreen
-            referrerpolicy="origin"
+            referrerpolicy="no-referrer-when-downgrade"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen; accelerometer; gyroscope">
         </iframe>
     `;
