@@ -13,22 +13,7 @@ const EMBED_PROVIDERS = {
         type === 'movie' 
             ? `https://vidsrc.rip/embed/movie/${id}` 
             : `https://vidsrc.rip/embed/tv/${id}/${season}/${episode}`,
-    vidsrcnet: (type, id, season, episode) => 
-        type === 'movie' 
-            ? `https://vidsrc.net/embed/movie/${id}` 
-            : `https://vidsrc.net/embed/tv/${id}/${season}/${episode}`,
-    vidsrcpm: (type, id, season, episode) => 
-        type === 'movie' 
-            ? `https://vidsrc.pm/embed/movie/${id}` 
-            : `https://vidsrc.pm/embed/tv/${id}/${season}/${episode}`,
-    vidsrcsu: (type, id, season, episode) => 
-        type === 'movie' 
-            ? `https://vidsrc.su/embed/movie/${id}` 
-            : `https://vidsrc.su/embed/tv/${id}/${season}/${episode}`,
-    vidbinge: (type, id, season, episode) => 
-        type === 'movie' 
-            ? `https://vidbinge.dev/embed/movie/${id}` 
-            : `https://vidbinge.dev/embed/tv/${id}/${season}/${episode}`
+
 };
 
 // PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
@@ -110,7 +95,7 @@ let currentMedia = {
     id: null,
     season: 1,
     episode: 1,
-    server: 'vidlink'
+    server: 'vidsrcrip'
 };
 let currentMoviesList = [];
 let currentShowsList = [];
@@ -575,7 +560,7 @@ window.openPlayer = async function (type, id, title) {
 };
 
 function loadIframe() {
-    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidlink;
+    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidsrcrip;
     const embedUrl = providerFunc(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
 
     iframeContainer.innerHTML = `
