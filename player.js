@@ -1,10 +1,6 @@
 ﻿const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 const EMBED_PROVIDERS = {
-    vidsrcrip: (type, id, season, episode) => 
-        type === 'movie' 
-            ? `https://vidsrc.rip/embed/movie/${id}` 
-            : `https://vidsrc.rip/embed/tv/${id}/${season}/${episode}`,
     vidlink: (type, id, season, episode) => 
         type === 'movie' 
             ? `https://vidlink.pro/movie/${id}?primaryColor=007bff&secondaryColor=1e3a8a` 
@@ -13,18 +9,22 @@ const EMBED_PROVIDERS = {
         type === 'movie' 
             ? `https://vidsrc.me/embed/movie?tmdb=${id}` 
             : `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`,
+    vidsrcrip: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://vidsrc.rip/embed/movie/${id}` 
+            : `https://vidsrc.rip/embed/tv/${id}/${season}/${episode}`,
     vidsrcnet: (type, id, season, episode) => 
         type === 'movie' 
             ? `https://vidsrc.net/embed/movie/${id}` 
             : `https://vidsrc.net/embed/tv/${id}/${season}/${episode}`,
-    vidsrcsu: (type, id, season, episode) => 
-        type === 'movie' 
-            ? `https://vidsrc.su/embed/movie/${id}` 
-            : `https://vidsrc.su/embed/tv/${id}/${season}/${episode}`,
     vidsrcpm: (type, id, season, episode) => 
         type === 'movie' 
             ? `https://vidsrc.pm/embed/movie/${id}` 
             : `https://vidsrc.pm/embed/tv/${id}/${season}/${episode}`,
+    vidsrcsu: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://vidsrc.su/embed/movie/${id}` 
+            : `https://vidsrc.su/embed/tv/${id}/${season}/${episode}`,
     vidbinge: (type, id, season, episode) => 
         type === 'movie' 
             ? `https://vidbinge.dev/embed/movie/${id}` 
@@ -50,7 +50,7 @@ let currentMedia = {
     id: id,
     season: 1,
     episode: 1,
-    server: 'vidsrcrip'
+    server: 'vidlink'
 };
 
 function getApiKey() {
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function loadIframe() {
-    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidsrcrip;
+    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidlink;
     const embedUrl = providerFunc(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
 
     iframeContainer.innerHTML = `
@@ -136,8 +136,7 @@ function loadIframe() {
             height="100%" 
             frameborder="0" 
             allowfullscreen
-            referrerpolicy="no-referrer-when-downgrade"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads"
+            referrerpolicy="origin"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen; accelerometer; gyroscope">
         </iframe>
     `;
