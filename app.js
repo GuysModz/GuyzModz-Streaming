@@ -1,19 +1,26 @@
 ﻿const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 const EMBED_PROVIDERS = {
+    nontongo: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://nontongo.win/embed/movie/${id}` 
+            : `https://nontongo.win/embed/tv/${id}/${season}/${episode}`,
+    vidsrcto: (type, id, season, episode) => 
+        type === 'movie' 
+            ? `https://vidsrc.to/embed/movie/${id}` 
+            : `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`,
     vidlink: (type, id, season, episode) => 
         type === 'movie' 
             ? `https://vidlink.pro/movie/${id}?primaryColor=007bff&secondaryColor=1e3a8a` 
             : `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=007bff&secondaryColor=1e3a8a`,
-    vidsrcme: (type, id, season, episode) => 
+    twoembed: (type, id, season, episode) => 
         type === 'movie' 
-            ? `https://vidsrc.me/embed/movie?tmdb=${id}` 
-            : `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`,
-    vidsrcrip: (type, id, season, episode) => 
+            ? `https://2embed.cc/embed/${id}` 
+            : `https://2embed.cc/embedtv/${id}&s=${season}&e=${episode}`,
+    smashy: (type, id, season, episode) => 
         type === 'movie' 
-            ? `https://vidsrc.rip/embed/movie/${id}` 
-            : `https://vidsrc.rip/embed/tv/${id}/${season}/${episode}`,
-
+            ? `https://embed.smashystream.com/playere.php?tmdb=${id}` 
+            : `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${season}&episode=${episode}`
 };
 
 // PASTE YOUR TMDB API KEY HERE TO MAKE IT PERMANENT
@@ -95,7 +102,7 @@ let currentMedia = {
     id: null,
     season: 1,
     episode: 1,
-    server: 'vidsrcrip'
+    server: 'nontongo'
 };
 let currentMoviesList = [];
 let currentShowsList = [];
@@ -560,7 +567,7 @@ window.openPlayer = async function (type, id, title) {
 };
 
 function loadIframe() {
-    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.vidsrcrip;
+    const providerFunc = EMBED_PROVIDERS[currentMedia.server] || EMBED_PROVIDERS.nontongo;
     const embedUrl = providerFunc(currentMedia.type, currentMedia.id, currentMedia.season, currentMedia.episode);
 
     iframeContainer.innerHTML = `
